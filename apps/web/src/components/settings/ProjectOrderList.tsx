@@ -21,9 +21,10 @@ import {
   pickableProjectGroups,
   selectProjectGroupingSettings,
 } from "@t3tools/client-runtime/state/project-grouping";
-import { ChevronRightIcon, GripVerticalIcon, PinIcon } from "lucide-react";
+import { ChevronRightIcon, GripVerticalIcon, PinIcon, PinOffIcon } from "lucide-react";
 import { Fragment } from "react";
 
+import { useProjectPin } from "../../hooks/useProjectGroupUpdate";
 import { useClientSettings } from "../../hooks/useSettings";
 import { useSidebarProjectGroups } from "../../hooks/useSidebarProjectGroups";
 import { cn } from "../../lib/utils";
@@ -47,6 +48,7 @@ export function ProjectOrderList() {
   const groupingSettings = useClientSettings(selectProjectGroupingSettings);
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
   const { selectScope } = useSettingsScope();
+  const { canPinProjectGroup, toggleProjectGroupPin } = useProjectPin();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -102,6 +104,8 @@ export function ProjectOrderList() {
                   <SortableProjectRow
                     group={group}
                     position={index + 1}
+                    canPin={canPinProjectGroup(group)}
+                    onTogglePin={() => toggleProjectGroupPin(group)}
                     onOpen={() =>
                       selectScope({
                         project: getSidebarProjectSettingsKey(group, groupingSettings, projects),
@@ -118,13 +122,79 @@ export function ProjectOrderList() {
   );
 }
 
+const PIN_ACTION_CLASSNAME =
+  "group/pin flex h-6 w-18 shrink-0 items-center justify-center gap-1 rounded text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
+
+function ProjectPinAction({
+  name,
+  pinned,
+  canPin,
+  onToggle,
+}: {
+  readonly name: string;
+  readonly pinned: boolean;
+  readonly canPin: boolean;
+  readonly onToggle: () => void;
+}) {
+  const pinnedLabel = (
+    <>
+      <PinIcon aria-hidden className="size-3" />
+      Pinned
+    </>
+  );
+  if (!canPin) {
+    return pinned ? (
+      <span className={cn(PIN_ACTION_CLASSNAME, "text-muted-foreground")}>{pinnedLabel}</span>
+    ) : null;
+  }
+  if (pinned) {
+    return (
+      <button
+        type="button"
+        aria-label={`Unpin ${name}`}
+        onClick={onToggle}
+        className={cn(
+          PIN_ACTION_CLASSNAME,
+          "cursor-pointer text-muted-foreground group-hover/order:bg-destructive/8 group-hover/order:text-destructive-foreground focus-visible:bg-destructive/8 focus-visible:text-destructive-foreground dark:group-hover/order:bg-destructive/16 dark:focus-visible:bg-destructive/16",
+        )}
+      >
+        <span className="flex items-center gap-1 group-hover/order:hidden group-focus-visible/pin:hidden">
+          {pinnedLabel}
+        </span>
+        <span className="hidden items-center gap-1 group-hover/order:flex group-focus-visible/pin:flex">
+          <PinOffIcon aria-hidden className="size-3" />
+          Unpin
+        </span>
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      aria-label={`Pin ${name}`}
+      onClick={onToggle}
+      className={cn(
+        PIN_ACTION_CLASSNAME,
+        "cursor-pointer bg-success/8 text-success-foreground opacity-0 group-hover/order:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 dark:bg-success/16",
+      )}
+    >
+      <PinIcon aria-hidden className="size-3" />
+      Pin
+    </button>
+  );
+}
+
 function SortableProjectRow({
   group,
   position,
+  canPin,
+  onTogglePin,
   onOpen,
 }: {
   readonly group: SidebarProjectSnapshot;
   readonly position: number;
+  readonly canPin: boolean;
+  readonly onTogglePin: () => void;
   readonly onOpen: () => void;
 }) {
   const {
@@ -143,7 +213,7 @@ function SortableProjectRow({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         ITEM_ROW_CLASSNAME,
-        "flex items-center gap-2",
+        "group/order flex items-center gap-2",
         isDragging && "relative z-10 rounded-md bg-background shadow-md",
       )}
     >
@@ -176,12 +246,12 @@ function SortableProjectRow({
           </span>
         </span>
       </button>
-      {group.pinned ? (
-        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground">
-          <PinIcon aria-hidden className="size-3" />
-          Pinned
-        </span>
-      ) : null}
+      <ProjectPinAction
+        name={group.displayName}
+        pinned={group.pinned}
+        canPin={canPin}
+        onToggle={onTogglePin}
+      />
       <button
         type="button"
         tabIndex={-1}

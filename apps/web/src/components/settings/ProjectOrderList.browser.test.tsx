@@ -10,6 +10,15 @@ const state = vi.hoisted(() => ({
   groups: [] as SidebarProjectSnapshot[],
 }));
 
+vi.mock(import("../../hooks/useProjectGroupUpdate"), async (original) => ({
+  ...(await original()),
+  useProjectPin: () => ({
+    canPinProjectGroup: () => true,
+    setProjectGroupPinned: vi.fn(),
+    toggleProjectGroupPin: vi.fn(),
+  }),
+}));
+
 vi.mock(import("../../hooks/useSidebarProjectGroups"), () => ({
   useSidebarProjectGroups: () => state.groups,
 }));
