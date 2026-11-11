@@ -71,6 +71,8 @@ export interface SettingsSearchItem {
   readonly peerLinksOnly?: boolean;
   readonly fastWorktreeCheckoutOnly?: boolean;
   readonly textGeneratorsOnly?: boolean;
+  /** Shown only while Plan mode is on in Labs. */
+  readonly planModeOnly?: boolean;
   readonly secondary?: boolean;
   readonly requiresThreadAutoSettlement?: boolean;
 }
@@ -89,6 +91,7 @@ export interface SettingsSearchAvailability {
   /** An environment without a provider allow-list, which hides text generators. */
   readonly hasTextGeneratorsEnvironment?: boolean;
   readonly hasPrimaryEnvironment?: boolean;
+  readonly planModeEnabled?: boolean;
 }
 
 export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
@@ -465,12 +468,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "new-threads-start-in-plan",
     title: "New thread mode",
     to: "/settings/threads",
+    planModeOnly: true,
     searchTerms: ["default new thread plan build mode"],
   },
   {
     id: "plan-model",
     title: "Default plan model",
     to: "/settings/threads",
+    planModeOnly: true,
     searchTerms: ["planning model build model implement different model"],
   },
   {
@@ -1509,7 +1514,8 @@ export function filterAvailableSettingsSearchItems(
       (!item.peerLinksOnly || availability.hasPeerLinkHost === true) &&
       (!item.fastWorktreeCheckoutOnly ||
         availability.hasFastWorktreeCheckoutEnvironment === true) &&
-      (!item.textGeneratorsOnly || availability.hasTextGeneratorsEnvironment === true),
+      (!item.textGeneratorsOnly || availability.hasTextGeneratorsEnvironment === true) &&
+      (!item.planModeOnly || availability.planModeEnabled === true),
   );
 }
 
