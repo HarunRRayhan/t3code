@@ -192,6 +192,7 @@ interface ComposerSendInput {
   readonly logicalProjectEnvironments: ReturnType<typeof useLogicalProjectEnvironments>;
   readonly providerInstanceEntries: ReadonlyArray<ProviderInstanceEntry>;
   readonly composerRef: ComposerHandleRef;
+  readonly onImplementPlanInNewThread: () => Promise<void>;
   readonly composerDraftTarget: ComposerThreadTarget;
   readonly promptRef: { current: string };
   readonly composerImagesRef: { current: ComposerImageAttachment[] };
@@ -289,6 +290,7 @@ export function useComposerSend(input: ComposerSendInput) {
     logicalProjectEnvironments,
     providerInstanceEntries,
     composerRef,
+    onImplementPlanInNewThread,
     composerDraftTarget,
     promptRef,
     composerImagesRef,
@@ -607,6 +609,7 @@ export function useComposerSend(input: ComposerSendInput) {
       selectedModelSelection: ctxSelectedModelSelection,
       interactionMode: sendInteractionMode,
       interactionModeEnabled: sendInteractionModeEnabled,
+      implementNeedsNewThread,
     } = sendCtx;
     const { images: composerImages, previewAnnotations: composerPreviewAnnotations } =
       mergeDirectPreviewAnnotation({
@@ -761,6 +764,11 @@ export function useComposerSend(input: ComposerSendInput) {
         draftText: promptForSend,
         planMarkdown: activeProposedPlan.planMarkdown,
       });
+      // A started thread cannot change provider, so a Build model from another one starts a new thread.
+      if (followUp.interactionMode === "default" && implementNeedsNewThread) {
+        await onImplementPlanInNewThread();
+        return;
+      }
       const outgoingFollowUpText = formatOutgoingPrompt({
         provider: ctxSelectedProvider,
         model: ctxSelectedModel,

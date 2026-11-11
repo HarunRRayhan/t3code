@@ -525,6 +525,29 @@ export function resolveComposerProviderSelection(input: {
   };
 }
 
+/**
+ * The model Plan mode forces on the composer, or the one that takes over when a thread still sitting
+ * on the Plan model leaves it. Null leaves the composer's own selection alone.
+ */
+export function resolveModeModelOverride(input: {
+  planMode: boolean;
+  planModel: ModelSelection | null;
+  buildModel: ModelSelection | null;
+  threadModelSelection: ModelSelection | null | undefined;
+  /** The instance the composer resolved with the Plan model offered first. */
+  selectedInstanceId: ProviderInstanceId | null | undefined;
+}): ModelSelection | null {
+  const { planModel, buildModel, threadModelSelection } = input;
+  if (planModel === null) return null;
+  if (input.planMode) return input.selectedInstanceId === planModel.instanceId ? planModel : null;
+  const sitsOnPlanModel =
+    threadModelSelection?.instanceId === planModel.instanceId &&
+    threadModelSelection.model === planModel.model;
+  return sitsOnPlanModel && buildModel !== null && buildModel.instanceId === planModel.instanceId
+    ? buildModel
+    : null;
+}
+
 export function resolveComposerInteractionMode(input: {
   planModeEnabled: boolean;
   provider: Pick<ServerProvider, "showInteractionModeToggle"> | null | undefined;
@@ -855,7 +878,7 @@ export function recallCheckoutIsRepo(
     : sessionCheckoutIsRepo.get(checkoutIsRepoKey(environmentId, cwd));
 }
 
-function threadHasStarted(thread: Thread | null | undefined): boolean {
+export function threadHasStarted(thread: Thread | null | undefined): boolean {
   return Boolean(thread && (thread.latestRun !== null || thread.itemCount > 0 || thread.runtime));
 }
 

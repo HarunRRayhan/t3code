@@ -193,7 +193,10 @@ export function usePlanFollowUpSend(input: PlanFollowUpSendInput) {
             ...(context ? { context } : {}),
             attachments: [],
           },
-          modelSelection: sendCtx.selectedModelSelection,
+          modelSelection:
+            nextInteractionMode === "default"
+              ? (sendCtx.implementModelSelection ?? sendCtx.selectedModelSelection)
+              : sendCtx.selectedModelSelection,
           titleSeed: activeThread.title,
           runtimeMode,
           interactionMode: nextInteractionMode,
@@ -297,7 +300,8 @@ export function useImplementPlanInNewThread(input: ImplementPlanInNewThreadInput
       text: buildPlanImplementationPrompt(planMarkdown),
     });
     const nextThreadTitle = truncate(buildPlanImplementationThreadTitle(planMarkdown));
-    const nextThreadModelSelection: ModelSelection = sendCtx.selectedModelSelection;
+    const nextThreadModelSelection: ModelSelection =
+      sendCtx.newThreadImplementModelSelection ?? sendCtx.selectedModelSelection;
 
     sendInFlightRef.current = true;
     beginLocalDispatch({ preparingWorktree: false });

@@ -341,6 +341,12 @@ export interface ChatComposerHandle {
     environmentContexts: EnvironmentContextRecord[];
     selectedPromptEffort: string | null;
     selectedModelSelection: ModelSelection;
+    /** The Build model Implement sends on from Plan mode, null outside it. */
+    implementModelSelection: ModelSelection | null;
+    /** The Build model belongs to another provider, so Implement has to start a new thread. */
+    implementNeedsNewThread: boolean;
+    /** Where Implement in a new thread starts: any provider. */
+    newThreadImplementModelSelection: ModelSelection | null;
     multipleModelSelections: ReadonlyArray<ModelSelection> | null;
     providerAvailable: boolean;
     selectedProvider: ProviderDriverKind;
@@ -890,6 +896,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerModelOptions,
     selectedModel,
     composerProviderState,
+    implementModelSelection,
+    implementNeedsNewThread,
+    newThreadImplementModelSelection,
   } = useComposerProviderModel({
     providerStatuses,
     settings,
@@ -898,6 +907,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     threadModelSelection: activeThreadModelSelection,
     projectModelSelection: activeProjectDefaultModelSelection,
     promptInjectionState: getComposerPromptInjectionState(prompt),
+    planMode: requestedInteractionMode === "plan",
     candidateInstanceIds: [
       composerDraft.activeProvider ?? null,
       activeThread?.runtime?.providerInstanceId,
@@ -3137,6 +3147,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         environmentContexts: composerEnvironmentContexts,
         selectedPromptEffort,
         selectedModelSelection,
+        implementModelSelection,
+        implementNeedsNewThread,
+        newThreadImplementModelSelection,
         multipleModelSelections:
           routeKind === "draft" && multipleModelSelections !== null
             ? multipleModelSelections.map((selection) =>
@@ -3209,6 +3222,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       reportedModelSelection,
       settings.planModeEnabled,
       selectedModelSelection,
+      implementModelSelection,
+      implementNeedsNewThread,
+      newThreadImplementModelSelection,
       multipleModelSelections,
       setMultipleModelSelections,
       routeKind,
