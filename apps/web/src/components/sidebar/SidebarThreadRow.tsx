@@ -1255,13 +1255,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             {/* `contents` keeps one-line rows a single flex row. */}
             <div className={multiline ? "flex h-6 min-w-0 items-center gap-2.5" : "contents"}>
               {inFolder && props.jumpNumber !== null ? (
-                <Kbd
+                <span
                   aria-hidden
                   data-jump-number
-                  className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2"
+                  className="pointer-events-none absolute start-4 top-1/2 inline-flex h-3.5 min-w-3.5 -translate-y-1/2 select-none items-center justify-center rounded bg-foreground/[0.07] font-medium text-3xs text-muted-foreground tabular-nums leading-none"
                 >
                   {props.jumpNumber}
-                </Kbd>
+                </span>
               ) : null}
               {accessibleTitle}
               {inFolder ? null : (
