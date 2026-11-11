@@ -463,16 +463,14 @@ export const SETTINGS_SEARCH_ITEMS = [
   },
   {
     id: "new-threads-start-in-plan",
-    title: "Start new threads in Plan mode",
-    to: "/settings/labs",
-    targetId: "plan-mode",
+    title: "New thread mode",
+    to: "/settings/threads",
     searchTerms: ["default new thread plan build mode"],
   },
   {
     id: "plan-model",
-    title: "Plan model",
-    to: "/settings/labs",
-    targetId: "plan-mode",
+    title: "Default plan model",
+    to: "/settings/threads",
     searchTerms: ["planning model build model implement different model"],
   },
   {
