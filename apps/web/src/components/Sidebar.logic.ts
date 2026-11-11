@@ -879,6 +879,40 @@ export function orderItemsByPreferredIds<TItem, TId>(input: {
   return [...ordered, ...remaining];
 }
 
+export type ThreadJumpTarget =
+  | { readonly kind: "thread"; readonly threadKey: string }
+  | { readonly kind: "picker" };
+
+/** Past this many threads, ⌘8 opens the thread picker and ⌘9 keeps pointing at the last thread. */
+const THREAD_JUMP_SLOTS = 9;
+
+/** ⌘9 is always the last thread; ⌘8 is a thread picker once the sidebar outgrows the nine slots. */
+export function resolveThreadJumpTarget(
+  orderedThreadKeys: readonly string[],
+  jumpNumber: number,
+): ThreadJumpTarget | null {
+  const last = orderedThreadKeys.at(-1);
+  if (jumpNumber === THREAD_JUMP_SLOTS)
+    return last === undefined ? null : { kind: "thread", threadKey: last };
+  if (jumpNumber === THREAD_JUMP_SLOTS - 1 && orderedThreadKeys.length > THREAD_JUMP_SLOTS) {
+    return { kind: "picker" };
+  }
+  const threadKey = orderedThreadKeys[jumpNumber - 1];
+  return threadKey === undefined ? null : { kind: "thread", threadKey };
+}
+
+/** The ⌘N number each sidebar thread answers to; threads hidden behind the picker get none. */
+export function threadJumpNumberByKey(orderedThreadKeys: readonly string[]): Map<string, number> {
+  const numbers = new Map<string, number>();
+  for (let jumpNumber = 1; jumpNumber <= THREAD_JUMP_SLOTS; jumpNumber += 1) {
+    const target = resolveThreadJumpTarget(orderedThreadKeys, jumpNumber);
+    if (target?.kind === "thread" && !numbers.has(target.threadKey)) {
+      numbers.set(target.threadKey, jumpNumber);
+    }
+  }
+  return numbers;
+}
+
 export function resolveAdjacentThreadId<T>(input: {
   threadIds: readonly T[];
   currentThreadId: T | null;

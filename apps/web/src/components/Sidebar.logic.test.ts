@@ -6,6 +6,8 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 import {
+  resolveThreadJumpTarget,
+  threadJumpNumberByKey,
   shouldCreateNewThreadInCurrentProject,
   deleteSelectedThreadEntries,
   getFallbackThreadIdAfterDelete,
@@ -1648,5 +1650,45 @@ describe("shouldCreateNewThreadInCurrentProject", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 1, 3)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(false, 0, 0)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(true, 2, 2)).toBe(true);
+  });
+});
+
+describe("thread jump numbers", () => {
+  const keys = (count: number) => Array.from({ length: count }, (_, index) => `t${index + 1}`);
+
+  it.each([
+    { count: 5, jump: 3, target: "t3" },
+    { count: 5, jump: 8, target: null },
+    { count: 5, jump: 9, target: "t5" },
+    { count: 8, jump: 8, target: "t8" },
+    { count: 9, jump: 8, target: "t8" },
+    { count: 9, jump: 9, target: "t9" },
+    { count: 12, jump: 7, target: "t7" },
+    { count: 12, jump: 8, target: "picker" },
+    { count: 12, jump: 9, target: "t12" },
+    { count: 0, jump: 9, target: null },
+  ])("$count threads: ⌘$jump goes to $target", ({ count, jump, target }) => {
+    const result = resolveThreadJumpTarget(keys(count), jump);
+    expect(result === null ? null : result.kind === "picker" ? "picker" : result.threadKey).toBe(
+      target,
+    );
+  });
+
+  it("tags only the threads a shortcut reaches", () => {
+    expect([...threadJumpNumberByKey(keys(3))]).toEqual([
+      ["t1", 1],
+      ["t2", 2],
+      ["t3", 3],
+    ]);
+    expect([...threadJumpNumberByKey(keys(12))]).toEqual([
+      ["t1", 1],
+      ["t2", 2],
+      ["t3", 3],
+      ["t4", 4],
+      ["t5", 5],
+      ["t6", 6],
+      ["t7", 7],
+      ["t12", 9],
+    ]);
   });
 });
