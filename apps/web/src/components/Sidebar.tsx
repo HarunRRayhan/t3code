@@ -188,6 +188,8 @@ import {
   planSidebarThreadDrop,
   reduceSidebarProjectScopeMenuState,
   resolveAdjacentThreadId,
+  resolveThreadJumpTarget,
+  threadJumpNumberByKey,
   resolveSidebarSweepKeys,
   resolveSidebarDropTarget,
   resolveSidebarDropVerb,
@@ -1433,15 +1435,17 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const settledThreadKeysRef = useRef(settledThreadKeys);
   const snoozedThreadKeysRef = useRef(snoozedThreadKeys);
 
-  const jumpLabelByKey = (() => {
-    const mapping = new Map<string, string>();
-    for (const [index, threadKey] of orderedThreadKeys.entries()) {
-      const jumpCommand = threadJumpCommandForIndex(index);
-      if (!jumpCommand) break;
-      const label = shortcutLabelForCommand(keybindings, jumpCommand);
-      if (label) mapping.set(threadKey, label);
+  const { jumpLabelByKey, jumpNumberByKey } = (() => {
+    const labels = new Map<string, string>();
+    const numbers = new Map<string, number>();
+    for (const [threadKey, jumpNumber] of threadJumpNumberByKey(orderedThreadKeys)) {
+      const jumpCommand = threadJumpCommandForIndex(jumpNumber - 1);
+      const label = jumpCommand ? shortcutLabelForCommand(keybindings, jumpCommand) : null;
+      if (!label) continue;
+      labels.set(threadKey, label);
+      numbers.set(threadKey, jumpNumber);
     }
-    return mapping;
+    return { jumpLabelByKey: labels, jumpNumberByKey: numbers };
   })();
 
   const navigateToThread = (threadRef: ScopedThreadRef) => {
@@ -2919,7 +2923,14 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       }
       const jumpIndex = threadJumpIndexFromCommand(command ?? "");
       if (jumpIndex === null) return;
-      navigateToThreadKey(orderedThreadKeys[jumpIndex] ?? null);
+      const jumpTarget = resolveThreadJumpTarget(orderedThreadKeys, jumpIndex + 1);
+      if (jumpTarget?.kind === "picker") {
+        event.preventDefault();
+        event.stopPropagation();
+        openCommandPalette({ open: "threads" });
+        return;
+      }
+      navigateToThreadKey(jumpTarget?.threadKey ?? null);
     };
     window.addEventListener("keydown", onWindowKeyDown);
     return () => window.removeEventListener("keydown", onWindowKeyDown);
@@ -3391,6 +3402,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             jumpLabel={
                               showJumpHints ? (jumpLabelByKey.get(threadKey) ?? null) : null
                             }
+                            jumpNumber={jumpNumberByKey.get(threadKey) ?? null}
                             currentEnvironmentId={primaryEnvironmentId}
                             environmentLabel={
                               environmentLabelById.get(thread.environmentId) ?? null
