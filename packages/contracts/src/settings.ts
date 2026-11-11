@@ -515,6 +515,7 @@ export const ClientSettingsSchema = Schema.Struct({
   proactivePanelsEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   showSkillsInSlashMenu: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   boringSidebarEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  planModeEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   boringSidebarMultilineRows: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
   ),
@@ -2034,6 +2035,7 @@ export const ClientSettingsPatch = Schema.Struct({
   proactivePanelsEnabled: Schema.optionalKey(Schema.Boolean),
   showSkillsInSlashMenu: Schema.optionalKey(Schema.Boolean),
   boringSidebarEnabled: Schema.optionalKey(Schema.Boolean),
+  planModeEnabled: Schema.optionalKey(Schema.Boolean),
   boringSidebarMultilineRows: Schema.optionalKey(Schema.Boolean),
   toolCallVisibility: Schema.optionalKey(ToolCallVisibility),
   screenReaderAnnouncements: Schema.optionalKey(ScreenReaderAnnouncements),

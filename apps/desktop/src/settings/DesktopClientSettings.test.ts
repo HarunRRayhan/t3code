@@ -62,6 +62,7 @@ const clientSettings: ClientSettings = {
   sidebarProjectSortOrder: "manual",
   sidebarThreadSortOrder: "created_at",
   boringSidebarEnabled: false,
+  planModeEnabled: true,
   boringSidebarMultilineRows: false,
   threadDetailsUsageEnabled: false,
   threadDetailsItems: {},
