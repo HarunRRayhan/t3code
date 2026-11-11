@@ -63,7 +63,7 @@ const clientSettings: ClientSettings = {
   sidebarThreadSortOrder: "created_at",
   boringSidebarEnabled: false,
   planModeEnabled: true,
-  newThreadsStartInPlan: true,
+  newThreadsStartInPlan: false,
   planModelSelection: null,
   buildModelSelection: null,
   boringSidebarMultilineRows: false,

@@ -516,7 +516,7 @@ export const ClientSettingsSchema = Schema.Struct({
   showSkillsInSlashMenu: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   boringSidebarEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   planModeEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
-  newThreadsStartInPlan: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  newThreadsStartInPlan: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   // Plan mode runs on planModelSelection; Implement returns to buildModelSelection. Null means no preference.
   planModelSelection: Schema.NullOr(ModelSelection).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
