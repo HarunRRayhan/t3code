@@ -2,6 +2,7 @@ import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell
 import type { UnifiedSettings } from "@t3tools/contracts";
 import type { Dispatch } from "react";
 import type { ComposerThreadTarget, DraftSessionState } from "../../composerDraftStore";
+import { updateClientSettings } from "../../hooks/useSettings";
 import { useStableCallback } from "../../hooks/useStableCallback";
 import { useApplyThreadModelPick } from "./useApplyThreadModelPick";
 import {
@@ -207,6 +208,13 @@ export function useComposerSelection(input: ComposerSelectionInput) {
       if (options?.focusComposer !== false) scheduleComposerFocus();
       return;
     }
+    // Plan mode has its own model: a pick there becomes the Plan model and leaves the thread's own alone.
+    if (interactionModeEnabled && interactionMode === "plan") {
+      void updateClientSettings({ planModelSelection: nextModelSelection });
+      if (options?.focusComposer !== false) scheduleComposerFocus();
+      return;
+    }
+    void updateClientSettings({ buildModelSelection: nextModelSelection });
     const threadRef = scopeThreadRef(activeThread.environmentId, activeThread.id);
     setComposerDraftModelSelection(threadRef, nextModelSelection, {
       explicit: true,

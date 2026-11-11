@@ -462,6 +462,20 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["hide fold running monitoring threads inbox sidebar shelf"],
   },
   {
+    id: "new-threads-start-in-plan",
+    title: "Start new threads in Plan mode",
+    to: "/settings/labs",
+    targetId: "plan-mode",
+    searchTerms: ["default new thread plan build mode"],
+  },
+  {
+    id: "plan-model",
+    title: "Plan model",
+    to: "/settings/labs",
+    targetId: "plan-mode",
+    searchTerms: ["planning model build model implement different model"],
+  },
+  {
     id: "plan-mode",
     title: "Plan mode",
     to: "/settings/labs",

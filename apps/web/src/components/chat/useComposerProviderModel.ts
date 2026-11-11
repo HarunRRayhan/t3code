@@ -17,7 +17,7 @@ import {
 } from "../../providerInstances";
 import { type UnifiedSettings } from "@t3tools/contracts/settings";
 import { getComposerPromptInjectionState, getComposerProviderState } from "./composerProviderState";
-import { resolveComposerProviderSelection } from "../ChatView.logic";
+import { resolveComposerProviderSelection, resolveModeModelOverride } from "../ChatView.logic";
 
 const NO_PROVIDER_MODELS: ServerProvider["models"] = [];
 
@@ -35,6 +35,8 @@ export function useComposerProviderModel(
     readonly threadModelSelection: ModelSelection | null | undefined;
     readonly projectModelSelection: ModelSelection | null | undefined;
     readonly promptInjectionState: ReturnType<typeof getComposerPromptInjectionState>;
+    /** Plan mode runs on the Plan model (settings.planModelSelection). */
+    readonly planMode: boolean;
   },
 ) {
   const {
@@ -45,6 +47,7 @@ export function useComposerProviderModel(
     threadModelSelection,
     projectModelSelection,
     promptInjectionState,
+    planMode,
     candidateInstanceIds,
     lockedProvider,
     lockedInstanceId,
@@ -55,9 +58,14 @@ export function useComposerProviderModel(
     settings,
     activeProjectId,
   );
+  const planModel = settings.planModelSelection ?? null;
+  const buildModel = settings.buildModelSelection ?? null;
+  const planFirst = planMode && settings.planModeEnabled && planModel !== null;
   const selection = resolveComposerProviderSelection({
     entries: providerInstanceEntries,
-    candidateInstanceIds,
+    candidateInstanceIds: planFirst
+      ? [planModel.instanceId, ...candidateInstanceIds]
+      : candidateInstanceIds,
     lockedProvider,
     lockedInstanceId,
   });
@@ -65,13 +73,25 @@ export function useComposerProviderModel(
     selection.selectedProviderEntry?.instanceId ?? NO_PROVIDER_MODEL_SELECTION.instanceId;
   const selectedProvider: ProviderDriverKind =
     selection.selectedProviderEntry?.driverKind ?? selection.requestedDriverKind;
+  const modeOverride = resolveModeModelOverride({
+    planMode: planMode && settings.planModeEnabled,
+    planModel,
+    buildModel,
+    threadModelSelection,
+    selectedInstanceId,
+  });
   const modelState = deriveEffectiveComposerModelState({
-    draft: draftModelState,
+    draft: modeOverride
+      ? {
+          activeProvider: modeOverride.instanceId,
+          modelSelectionByProvider: { [modeOverride.instanceId]: modeOverride },
+        }
+      : draftModelState,
     providers: providerStatuses,
     selectedProvider,
     selectedInstanceId,
     requestedInstanceId: selection.requestedInstanceId,
-    threadModelSelection,
+    threadModelSelection: modeOverride ?? threadModelSelection,
     projectModelSelection,
     settings,
   });
@@ -84,7 +104,50 @@ export function useComposerProviderModel(
     modelOptions: modelState.modelOptions?.[selectedInstanceId],
     includePlanAgent: settings.planModeEnabled,
   });
+  // Implement leaves Plan mode, so it sends on the Build model: the one picked in Build mode, else
+  // what this composer resolves without the Plan model. A started thread keeps its provider.
+  const buildSelection = planFirst
+    ? resolveComposerProviderSelection({
+        entries: providerInstanceEntries,
+        candidateInstanceIds,
+        lockedProvider,
+        lockedInstanceId,
+      })
+    : null;
+  const buildBaseline = (() => {
+    const entry = buildSelection?.selectedProviderEntry;
+    if (!buildSelection || !entry) return null;
+    const state = deriveEffectiveComposerModelState({
+      draft: draftModelState,
+      providers: providerStatuses,
+      selectedProvider: entry.driverKind,
+      selectedInstanceId: entry.instanceId,
+      requestedInstanceId: buildSelection.requestedInstanceId,
+      threadModelSelection,
+      projectModelSelection,
+      settings,
+    });
+    const options = state.modelOptions?.[entry.instanceId];
+    return {
+      instanceId: entry.instanceId,
+      model: state.selectedModel,
+      ...(options ? { options } : {}),
+    } satisfies ModelSelection;
+  })();
+  const buildModelFitsThread =
+    buildModel !== null &&
+    resolveComposerProviderSelection({
+      entries: providerInstanceEntries,
+      candidateInstanceIds: [buildModel.instanceId],
+      lockedProvider,
+      lockedInstanceId,
+    }).selectedProviderEntry?.instanceId === buildModel.instanceId;
   return {
+    implementNeedsNewThread: planFirst && buildModel !== null && !buildModelFitsThread,
+    implementModelSelection: planFirst
+      ? ((buildModelFitsThread ? buildModel : null) ?? buildBaseline)
+      : null,
+    newThreadImplementModelSelection: planFirst ? (buildModel ?? buildBaseline) : null,
     providerInstanceEntries,
     ...selection,
     selectedInstanceId,

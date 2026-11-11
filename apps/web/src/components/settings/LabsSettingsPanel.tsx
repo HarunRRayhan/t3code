@@ -94,6 +94,60 @@ function PlanModeRow() {
           aria-label="Plan mode"
         />
       }
+    >
+      {settings.planModeEnabled ? (
+        <div className="mt-2 mb-2 border-l-2 border-border/60 ps-3">
+          <NewThreadsStartInPlanRow />
+          <PlanModelRow />
+        </div>
+      ) : null}
+    </SettingsRow>
+  );
+}
+
+function NewThreadsStartInPlanRow() {
+  const settings = useScopedSettings();
+  const updateSettings = useUpdateScopedSettings();
+  return (
+    <SettingsRow
+      {...searchableSetting("new-threads-start-in-plan")}
+      className="px-0 py-2 sm:px-0"
+      description="New threads open in Plan mode. Threads you already started keep their mode."
+      control={
+        <Switch
+          checked={settings.newThreadsStartInPlan}
+          onCheckedChange={(checked) => updateSettings({ newThreadsStartInPlan: Boolean(checked) })}
+          aria-label="Start new threads in Plan mode"
+        />
+      }
+    />
+  );
+}
+
+function PlanModelRow() {
+  const settings = useScopedSettings();
+  const updateSettings = useUpdateScopedSettings();
+  const planModel = settings.planModelSelection;
+  return (
+    <SettingsRow
+      {...searchableSetting("plan-model")}
+      className="px-0 py-2 sm:px-0"
+      description={
+        planModel
+          ? `Plan mode runs on ${planModel.model}. Implement goes back to your Build model. Pick a model in the composer while in Plan mode to change it.`
+          : "Plan mode uses your Build model. Pick a model in the composer while in Plan mode to give Plan its own."
+      }
+      control={
+        planModel ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => updateSettings({ planModelSelection: null })}
+          >
+            Clear
+          </Button>
+        ) : null
+      }
     />
   );
 }

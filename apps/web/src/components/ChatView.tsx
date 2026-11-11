@@ -340,6 +340,7 @@ import {
   resolveFileAttachmentUrl,
   resolveComposerInteractionMode,
   resolveComposerProviderSelection,
+  threadHasStarted,
   resolveThreadMetadataUpdateForNextTurn,
   resolveSendEnvMode,
   startNewThreadForProject,
@@ -1307,7 +1308,12 @@ export default function ChatView(props: ChatViewProps) {
     planModeEnabled: settings.planModeEnabled,
     provider: activeProviderStatus,
     interactionMode:
-      composerInteractionMode ?? activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
+      composerInteractionMode ??
+      (settings.newThreadsStartInPlan &&
+      activeThread !== undefined &&
+      !threadHasStarted(activeThread)
+        ? "plan"
+        : (activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE)),
   });
   const conversationProviderStatus =
     providerStatuses.find((status) => status.instanceId === activeRuntime?.providerInstanceId) ??
@@ -2917,6 +2923,7 @@ export default function ChatView(props: ChatViewProps) {
   });
   const { onSend } = useComposerSend({
     environmentId,
+    onImplementPlanInNewThread,
     routeThreadKey,
     currentRouteThreadKeyRef,
     draftId,
