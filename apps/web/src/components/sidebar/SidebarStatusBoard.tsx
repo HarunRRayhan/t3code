@@ -1,3 +1,5 @@
+import { ActivityIcon, BellRingIcon, ListIcon } from "lucide-react";
+
 import { useThreadUndoNotice } from "../../hooks/showThreadUndoNotice";
 import { useQuietThreadShells } from "../../state/entities";
 import { cn } from "../../lib/utils";
@@ -8,10 +10,12 @@ import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { useSidebarStatusFilter } from "./sidebarStatusFilter";
 
 const FILTERS = [
-  { value: "all", label: "All", name: "All threads" },
-  { value: "action", label: "Action", name: "Action needed" },
-  { value: "others", label: "Others", name: "Others" },
-] as const satisfies ReadonlyArray<{ value: SidebarStatusFilter; label: string; name: string }>;
+  { value: "all", Icon: ListIcon, name: "All threads" },
+  { value: "action", Icon: BellRingIcon, name: "Action needed" },
+  { value: "others", Icon: ActivityIcon, name: "Others" },
+] as const;
+
+const countLabel = (count: number) => (count > 99 ? "99+" : String(count));
 
 /**
  * The footer's free space: a status filter, which a status update flips over like a
@@ -20,13 +24,12 @@ const FILTERS = [
 export function SidebarStatusBoard() {
   const [filter, setFilter] = useSidebarStatusFilter();
   const noticeShown = useThreadUndoNotice((state) => state.notice !== null);
-  const actionCount = useQuietThreadShells().filter(
+  const live = useQuietThreadShells().filter(
     (thread) =>
-      thread.archivedAt == null &&
-      thread.deletedAt == null &&
-      thread.settledOverride !== "settled" &&
-      isThreadActionNeeded(thread),
-  ).length;
+      thread.archivedAt == null && thread.deletedAt == null && thread.settledOverride !== "settled",
+  );
+  const action = live.filter(isThreadActionNeeded).length;
+  const counts = { all: live.length, action, others: live.length - action };
 
   return (
     <SidebarMenuItem className="relative flex h-6 min-w-0 flex-1 [perspective:400px]">
@@ -51,14 +54,11 @@ export function SidebarStatusBoard() {
             <ToggleGroupItem
               key={entry.value}
               value={entry.value}
-              aria-label={entry.name}
-              title={
-                entry.value === "action" && actionCount > 0
-                  ? `${entry.name}: ${actionCount}`
-                  : entry.name
-              }
+              aria-label={`${entry.name}: ${counts[entry.value]}`}
+              title={entry.name}
             >
-              {entry.label}
+              <entry.Icon />
+              <span className="tabular-nums">{countLabel(counts[entry.value])}</span>
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
