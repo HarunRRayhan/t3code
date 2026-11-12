@@ -1009,6 +1009,12 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
         const env = { ...baseEnv, ...explicitBareRepositoryEnv(baseEnv, hostPlatform) };
         const spawnEnv = { ...env, ...windowsLongPathConfigEnv(hostPlatform, env) };
         const resolved = yield* resolveSpawnCommand("git", [], { env: spawnEnv });
+        const spawnError = (cause: unknown) =>
+          new GitCommandError({
+            ...gitCommandContext(commandInput),
+            detail: "Failed to spawn Git process.",
+            cause,
+          });
         // cmd wrappers truncate multiline commits; leave git.cmd handling to Node lookup.
         const executable = resolved.shell ? "git" : resolved.command;
         const child = yield* commandSpawner
@@ -1024,14 +1030,9 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
             }),
           )
           .pipe(
-            Effect.mapError(
-              (cause) =>
-                new GitCommandError({
-                  ...gitCommandContext(commandInput),
-                  detail: "Failed to spawn Git process.",
-                  cause,
-                }),
-            ),
+            Effect.mapError(spawnError),
+            // Synchronous spawn throws (such as E2BIG) arrive as defects.
+            Effect.catchDefect((cause) => Effect.fail(spawnError(cause))),
           );
 
         const [stdout, stderr, exitCode] = yield* Effect.all(
@@ -2534,11 +2535,86 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       yield* runGit(
         "GitVcsDriver.commit.addSelected",
         cwd,
-        // Status paths are repository-relative, while cwd can be a subdirectory.
-        [...config, "add", "-A", "--", ...filePaths.map((file) => `:(top,literal)${file}`)],
-        env ? { env } : {},
+        [...config, "add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul"],
+        {
+          ...(env ? { env } : {}),
+          // Status paths are repository-relative, while cwd can be a subdirectory.
+          stdin: filePaths.map((file) => `:(top,literal)${file}\0`).join(""),
+        },
       );
     } else {
+      // add -A marks unmerged paths resolved, so refuse while one still has conflict markers.
+      const unmergedPaths = (yield* runGitStdoutWithOptions(
+        "GitVcsDriver.commit.unmergedPaths",
+        cwd,
+        ["-c", "diff.relative=false", "diff", "--name-only", "--diff-filter=U", "-z"],
+        env ? { env } : {},
+      ))
+        .split("\0")
+        .filter((file) => file.length > 0);
+      if (unmergedPaths.length > 0) {
+        const check = yield* executeGit(
+          "GitVcsDriver.commit.conflictMarkers",
+          cwd,
+          [
+            "-c",
+            "diff.relative=false",
+            "diff",
+            "--check",
+            "--no-color",
+            "--",
+            ...unmergedPaths.map((file) => `:(top,literal)${file}`),
+          ],
+          {
+            ...(env ? { env } : {}),
+            allowNonZeroExit: true,
+            maxOutputBytes: REVIEW_METADATA_MAX_OUTPUT_BYTES,
+            appendTruncationMarker: true,
+          },
+        );
+        const reports = check.stdout.split("\n");
+        const conflicted: string[] = [];
+        let topLevel: string | undefined;
+        for (const file of unmergedPaths) {
+          const markerLines = new Set(
+            reports.flatMap((line) => {
+              const match = line.startsWith(`${file}:`)
+                ? /^(\d+): leftover conflict marker$/.exec(line.slice(file.length + 1))
+                : null;
+              return match ? [Number(match[1]) - 1] : [];
+            }),
+          );
+          if (markerLines.size === 0) continue;
+          topLevel ??= (yield* runGitStdout("GitVcsDriver.commit.topLevel", cwd, [
+            "rev-parse",
+            "--show-toplevel",
+          ])).trim();
+          const lines = (yield* fileSystem.readFileString(path.join(topLevel, file)).pipe(
+            Effect.mapError(
+              (cause) =>
+                new GitCommandError({
+                  operation: "GitVcsDriver.commit.conflictMarkers",
+                  command: "git commit",
+                  cwd,
+                  detail: `Could not check ${file} for conflict markers.`,
+                  cause,
+                }),
+            ),
+          )).split("\n");
+          // Git also reports a lone "=======", which is valid content such as a heading underline.
+          const reported = (marker: string) =>
+            lines.some((line, index) => markerLines.has(index) && line.startsWith(marker));
+          if (reported("<") && reported(">")) conflicted.push(file);
+        }
+        if (conflicted.length > 0) {
+          return yield* new GitCommandError({
+            operation: "GitVcsDriver.commit",
+            command: "git commit",
+            cwd,
+            detail: `Cannot commit with unresolved merge conflicts in ${conflicted.join(", ")}. Resolve them, then commit.`,
+          });
+        }
+      }
       yield* runGit(
         "GitVcsDriver.commit.addAll",
         cwd,
