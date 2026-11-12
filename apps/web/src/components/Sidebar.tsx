@@ -209,7 +209,10 @@ import {
   type SidebarListItem,
   type SidebarSection,
   resolveSidebarRowThreadId,
+  matchesSidebarStatusFilter,
+  type SidebarStatusFilter,
 } from "./Sidebar.logic";
+import { useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
 import {
   createSidebarCollisionDetection,
   createSidebarSortingStrategy,
@@ -354,6 +357,7 @@ interface SidebarThreadPartitionInput {
   readonly connectedEnvironmentIds: readonly EnvironmentId[];
   readonly optimisticDrop: SidebarOptimisticDrop | null;
   readonly workingShelfEnabled: boolean;
+  readonly statusFilter: SidebarStatusFilter;
   /** Boring mode: folders list active threads by the user's latest message. */
   readonly sortActiveBySend: boolean;
   // Snooze wakes, the queued-turn grace and the Working shelf's exit grace depend
@@ -476,6 +480,7 @@ function useSidebarThreads(input: {
   const settledVisibleCount =
     settledTail.scopeKey === projectScopeKey ? settledTail.count : SETTLED_TAIL_INITIAL_COUNT;
 
+  const [statusFilter] = useSidebarStatusFilter();
   const partition = partitionSidebarThreads({
     threads,
     scopedProjectKeys,
@@ -484,6 +489,7 @@ function useSidebarThreads(input: {
     connectedEnvironmentIds,
     optimisticDrop,
     workingShelfEnabled,
+    statusFilter,
     sortActiveBySend: folderGroups !== null,
     clockKey: `${nowMinute}:${snoozeWakeClock}:${inboxReturnsVersion}`,
   });
@@ -622,7 +628,16 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
     sortActiveBySend,
   } = input;
   const preciseNow = new Date().toISOString();
-  const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys, delegatedUnderParent);
+  // Settled threads stay listed: the filter narrows the active list, not the shelf of finished work.
+  const visible = filterSidebarV2VisibleThreads(
+    threads,
+    scopedProjectKeys,
+    delegatedUnderParent,
+  ).filter(
+    (thread) =>
+      thread.settledOverride === "settled" ||
+      matchesSidebarStatusFilter(input.statusFilter, thread),
+  );
   const inboxObservation = inboxReturns.observe(workingShelfEnabled ? threads : null);
   const pinned: EnvironmentThreadShell[] = [];
   const active: EnvironmentThreadShell[] = [];

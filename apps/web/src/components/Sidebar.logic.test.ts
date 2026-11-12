@@ -6,6 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 import {
+  matchesSidebarStatusFilter,
   shouldCreateNewThreadInCurrentProject,
   deleteSelectedThreadEntries,
   getFallbackThreadIdAfterDelete,
@@ -1648,5 +1649,28 @@ describe("shouldCreateNewThreadInCurrentProject", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 1, 3)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(false, 0, 0)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(true, 2, 2)).toBe(true);
+  });
+});
+
+describe("matchesSidebarStatusFilter", () => {
+  const idle = {
+    hasPendingApprovals: false,
+    hasPendingUserInput: false,
+    pendingSubagentRequest: null,
+    pendingGuestMessageCount: 0,
+    interactionMode: "default",
+    hasActionableProposedPlan: true,
+  } as const;
+
+  it.each([
+    ["approval", { ...idle, hasPendingApprovals: true }, true],
+    ["question", { ...idle, hasPendingUserInput: true }, true],
+    ["sub-agent request", { ...idle, pendingSubagentRequest: "approval" }, true],
+    ["plan to accept", { ...idle, interactionMode: "plan" }, true],
+    ["plan proposed outside plan mode", idle, false],
+  ] as const)("splits action-needed from others: %s", (_name, thread, actionNeeded) => {
+    expect(matchesSidebarStatusFilter("all", thread)).toBe(true);
+    expect(matchesSidebarStatusFilter("action", thread)).toBe(actionNeeded);
+    expect(matchesSidebarStatusFilter("others", thread)).toBe(!actionNeeded);
   });
 });
