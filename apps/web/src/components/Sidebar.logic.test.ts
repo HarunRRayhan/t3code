@@ -1696,6 +1696,7 @@ describe("thread jump numbers", () => {
       ["t7", 7],
       ["t12", 9],
     ]);
+  });
 });
 
 describe("matchesSidebarStatusFilter", () => {
