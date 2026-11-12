@@ -357,7 +357,11 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
         return;
       }
       const command = resolveShortcutCommand(event, keybindings, {
-        context: { usagePageOpen, terminalFocus: isTerminalFocused() },
+        context: {
+          usagePageOpen,
+          terminalFocus: isTerminalFocused(),
+          modelPickerOpen: isModelPickerOpen(),
+        },
       });
       const filter = SIDEBAR_FILTER_COMMANDS[command ?? ""];
       if (command !== "sidebar.toggle" && filter === undefined) return;

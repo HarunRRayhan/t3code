@@ -232,27 +232,20 @@ describe("thread archive and delete defaults", () => {
 });
 
 describe("sidebar filter defaults", () => {
-  it("bind mod+alt+1..3, which no other default uses", () => {
+  it("bind alt+shift+1..3 and step aside while the model picker is open", () => {
     for (const [digit, command] of [
       ["1", "sidebar.filter.all"],
       ["2", "sidebar.filter.action"],
       ["3", "sidebar.filter.others"],
     ] as const) {
-      assert.strictEqual(
-        resolveShortcutCommand(
-          event({ key: digit, metaKey: true, altKey: true }),
-          DEFAULT_RESOLVED_KEYBINDINGS,
-          { platform: "MacIntel" },
-        ),
-        command,
-      );
-      assert.deepStrictEqual(
-        DEFAULT_RESOLVED_KEYBINDINGS.filter(
-          (binding) =>
-            binding.shortcut.key === digit && binding.shortcut.altKey && !binding.shortcut.shiftKey,
-        ).map((binding) => binding.command),
-        [command],
-      );
+      const chord = event({ key: digit, altKey: true, shiftKey: true });
+      const resolve = (modelPickerOpen: boolean) =>
+        resolveShortcutCommand(chord, DEFAULT_RESOLVED_KEYBINDINGS, {
+          platform: "MacIntel",
+          context: { modelPickerOpen },
+        });
+      assert.strictEqual(resolve(false), command);
+      assert.strictEqual(resolve(true), null);
     }
   });
 });

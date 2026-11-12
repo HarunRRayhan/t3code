@@ -56,9 +56,18 @@ type WhenToken =
 
 export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+b", command: "sidebar.toggle" },
-  { key: "mod+alt+1", command: "sidebar.filter.all", when: "!terminalFocus" },
-  { key: "mod+alt+2", command: "sidebar.filter.action", when: "!terminalFocus" },
-  { key: "mod+alt+3", command: "sidebar.filter.others", when: "!terminalFocus" },
+  // Saved model picker jump rules use alt+shift+N while the picker is open, so these step aside.
+  { key: "alt+shift+1", command: "sidebar.filter.all", when: "!terminalFocus && !modelPickerOpen" },
+  {
+    key: "alt+shift+2",
+    command: "sidebar.filter.action",
+    when: "!terminalFocus && !modelPickerOpen",
+  },
+  {
+    key: "alt+shift+3",
+    command: "sidebar.filter.others",
+    when: "!terminalFocus && !modelPickerOpen",
+  },
   { key: "f6", command: "workspace.focusNext" },
   { key: "shift+f6", command: "workspace.focusPrevious" },
   // Some browsers keep plain F6 for their own toolbars; mod+F6 reaches the page in all of them.
