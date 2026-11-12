@@ -28,7 +28,7 @@ import {
   RuntimeMode,
 } from "@t3tools/contracts";
 import { deriveThreadTitleSeed } from "@t3tools/client-runtime/operations";
-import { wasBootstrapThreadDeleted } from "@t3tools/client-runtime/errors";
+import { wasBootstrapThreadDeleted, wasLaunchThreadIdTaken } from "@t3tools/client-runtime/errors";
 import {
   declinePendingApprovals,
   sendApprovalFeedback,
@@ -1491,7 +1491,8 @@ export function useComposerSend(input: ComposerSendInput) {
         restoreFailedDraftThread(
           draftId,
           draftThread,
-          wasBootstrapThreadDeleted(squashAtomCommandFailure(failure))
+          wasBootstrapThreadDeleted(squashAtomCommandFailure(failure)) ||
+            wasLaunchThreadIdTaken(squashAtomCommandFailure(failure))
             ? newThreadId()
             : threadIdForSend,
         );

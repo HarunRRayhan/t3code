@@ -4032,6 +4032,8 @@ export class OrchestrationV2ThreadLaunchError extends Schema.TaggedError<Orchest
     commandId: CommandId,
     projectId: ProjectId,
     message: Schema.String,
+    /** The client-chosen thread id belongs to another thread, so retrying needs a new one. */
+    reason: Schema.optional(Schema.Literal("thread-id-taken")),
     cause: Schema.optional(Schema.Defect()),
   },
 ) {}
