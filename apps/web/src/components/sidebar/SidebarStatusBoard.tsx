@@ -41,7 +41,7 @@ export function SidebarStatusBoard() {
         aria-hidden={noticeShown}
         inert={noticeShown}
         className={cn(
-          "absolute inset-0 flex items-center transition-[opacity,transform] duration-300 ease-out motion-reduce:transform-none",
+          "absolute inset-0 flex items-center justify-center transition-[opacity,transform] duration-300 ease-out motion-reduce:transform-none",
           noticeShown && "opacity-0 [transform:rotateX(90deg)]",
         )}
       >
@@ -61,9 +61,19 @@ export function SidebarStatusBoard() {
               aria-label={`${entry.name}: ${counts[entry.value]}`}
               title={entry.name}
             >
-              <span className={cn("relative grid place-items-center", entry.color)}>
-                <entry.Icon className="opacity-40" />
-                <span className="pointer-events-none absolute text-3xs leading-none font-semibold tabular-nums">
+              <span className="relative grid place-items-center">
+                <entry.Icon
+                  className={cn(
+                    "opacity-40",
+                    filter === entry.value ? entry.color : "text-muted-foreground",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "pointer-events-none absolute text-3xs leading-none font-semibold tabular-nums",
+                    entry.color,
+                  )}
+                >
                   {countLabel(counts[entry.value])}
                 </span>
               </span>
