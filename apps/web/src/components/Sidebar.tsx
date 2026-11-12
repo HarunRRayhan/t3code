@@ -209,10 +209,11 @@ import {
   type SidebarListItem,
   type SidebarSection,
   resolveSidebarRowThreadId,
+  isThreadActionNeeded,
   matchesSidebarStatusFilter,
   type SidebarStatusFilter,
 } from "./Sidebar.logic";
-import { useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
+import { publishSidebarStatusCounts, useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
 import {
   createSidebarCollisionDetection,
   createSidebarSortingStrategy,
@@ -496,6 +497,11 @@ function useSidebarThreads(input: {
 
   const { pinnedThreads, activeThreads, workingThreads, snoozedThreads, settledThreads } =
     partition;
+  const { statusCounts } = partition;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- publishes the list's counts to the footer, a separate tree with no access to this scope
+  useEffect(() => {
+    publishSidebarStatusCounts(statusCounts);
+  }, [statusCounts.all, statusCounts.action, statusCounts.others]);
   // Older settled threads load in pages; the shelf lists them only as far as they are loaded.
   const olderSettledShelf = useOlderSettledShelf({
     scopes: olderSettledScopes([...serverConfigs.keys()], scopedProjectKeys),
@@ -629,11 +635,11 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
   } = input;
   const preciseNow = new Date().toISOString();
   // Settled threads stay listed: the filter narrows the active list, not the shelf of finished work.
-  const visible = filterSidebarV2VisibleThreads(
-    threads,
-    scopedProjectKeys,
-    delegatedUnderParent,
-  ).filter(
+  const listable = filterSidebarV2VisibleThreads(threads, scopedProjectKeys, delegatedUnderParent);
+  const unsettled = listable.filter((thread) => thread.settledOverride !== "settled");
+  const action = unsettled.filter(isThreadActionNeeded).length;
+  const statusCounts = { all: unsettled.length, action, others: unsettled.length - action };
+  const visible = listable.filter(
     (thread) =>
       thread.settledOverride === "settled" ||
       matchesSidebarStatusFilter(input.statusFilter, thread),
@@ -724,6 +730,7 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
     ),
     settledThreads: sortSettledThreads(settled),
     visibleThreads: visible,
+    statusCounts,
     snoozeNow: preciseNow,
   };
 }
