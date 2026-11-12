@@ -8,6 +8,7 @@ import { AsyncResult } from "effect/reactivity";
 import {
   resolveThreadJumpTarget,
   threadJumpNumberByKey,
+  matchesSidebarStatusFilter,
   shouldCreateNewThreadInCurrentProject,
   deleteSelectedThreadEntries,
   getFallbackThreadIdAfterDelete,
@@ -1695,5 +1696,27 @@ describe("thread jump numbers", () => {
       ["t7", 7],
       ["t12", 9],
     ]);
+});
+
+describe("matchesSidebarStatusFilter", () => {
+  const idle = {
+    hasPendingApprovals: false,
+    hasPendingUserInput: false,
+    pendingSubagentRequest: null,
+    pendingGuestMessageCount: 0,
+    interactionMode: "default",
+    hasActionableProposedPlan: true,
+  } as const;
+
+  it.each([
+    ["approval", { ...idle, hasPendingApprovals: true }, true],
+    ["question", { ...idle, hasPendingUserInput: true }, true],
+    ["sub-agent request", { ...idle, pendingSubagentRequest: "approval" }, true],
+    ["plan to accept", { ...idle, interactionMode: "plan" }, true],
+    ["plan proposed outside plan mode", idle, false],
+  ] as const)("splits action-needed from others: %s", (_name, thread, actionNeeded) => {
+    expect(matchesSidebarStatusFilter("all", thread)).toBe(true);
+    expect(matchesSidebarStatusFilter("action", thread)).toBe(actionNeeded);
+    expect(matchesSidebarStatusFilter("others", thread)).toBe(!actionNeeded);
   });
 });

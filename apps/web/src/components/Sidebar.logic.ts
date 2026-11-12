@@ -1489,3 +1489,33 @@ export function sortScopedProjectsForSidebar<
       left.id.localeCompare(right.id),
   );
 }
+
+export type SidebarStatusFilter = "all" | "action" | "others";
+
+/** Threads waiting on the user: an approval, a question, a plan to accept, or a guest message. */
+export function isThreadActionNeeded(
+  thread: Pick<
+    SidebarThreadSummary,
+    | "hasPendingApprovals"
+    | "hasPendingUserInput"
+    | "pendingSubagentRequest"
+    | "pendingGuestMessageCount"
+    | "interactionMode"
+    | "hasActionableProposedPlan"
+  >,
+): boolean {
+  return (
+    thread.hasPendingApprovals ||
+    thread.hasPendingUserInput ||
+    thread.pendingSubagentRequest != null ||
+    (thread.pendingGuestMessageCount ?? 0) > 0 ||
+    (thread.interactionMode === "plan" && thread.hasActionableProposedPlan)
+  );
+}
+
+export function matchesSidebarStatusFilter(
+  filter: SidebarStatusFilter,
+  thread: Parameters<typeof isThreadActionNeeded>[0],
+): boolean {
+  return filter === "all" || (filter === "action") === isThreadActionNeeded(thread);
+}
