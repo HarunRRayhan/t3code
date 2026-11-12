@@ -205,23 +205,26 @@ const DEFAULT_BINDINGS = compile([
 
 describe("thread archive and delete defaults", () => {
   it("bind their own chords, which no other default uses", () => {
-    for (const [command, shiftKey] of [
-      ["thread.archive", false],
-      ["thread.delete", true],
+    for (const [command, chord, key, altKey] of [
+      ["thread.archive", event({ key: "w", metaKey: true, shiftKey: true }), "w", false],
+      [
+        "thread.delete",
+        event({ key: "Backspace", metaKey: true, altKey: true, shiftKey: true }),
+        "backspace",
+        true,
+      ],
     ] as const) {
-      const chord = event({ key: "Backspace", metaKey: true, altKey: true, shiftKey });
       assert.strictEqual(
         resolveShortcutCommand(chord, DEFAULT_RESOLVED_KEYBINDINGS, { platform: "MacIntel" }),
         command,
       );
-      const sharing = DEFAULT_RESOLVED_KEYBINDINGS.filter(
-        (binding) =>
-          binding.shortcut.key === "backspace" &&
-          binding.shortcut.altKey &&
-          binding.shortcut.shiftKey === shiftKey,
-      );
       assert.deepStrictEqual(
-        sharing.map((binding) => binding.command),
+        DEFAULT_RESOLVED_KEYBINDINGS.filter(
+          (binding) =>
+            binding.shortcut.key === key &&
+            binding.shortcut.shiftKey &&
+            binding.shortcut.altKey === altKey,
+        ).map((binding) => binding.command),
         [command],
       );
     }
