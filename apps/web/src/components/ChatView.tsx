@@ -2684,6 +2684,21 @@ export default function ChatView(props: ChatViewProps) {
     if (activeThreadRef && !embedded) return focusTerminalOnThreadEnter(activeThreadRef);
   }, [activeThreadRef, embedded]);
 
+  // The typing guard holds approvals while the user types, so a chord never answers one unseen.
+  const answerableApproval =
+    activePendingApproval !== null &&
+    activePendingApproval.responseCapability === "live" &&
+    !respondingRequestIds.includes(activePendingApproval.requestId) &&
+    !heldApprovalRequestIds.has(activePendingApproval.requestId)
+      ? activePendingApproval
+      : null;
+  const answerApprovalByShortcut = (event: KeyboardEvent, decision: "accept" | "decline") => {
+    // A provider that lists its own options may not offer this decision.
+    if (answerableApproval?.options?.some((option) => option.decision === decision) === false)
+      return false;
+    if (answerableApproval === null) return false;
+    if (!event.repeat) void onRespondToApprovalStable(answerableApproval.requestId, decision);
+  };
   const getShortcutContext = (eventTarget: EventTarget | null = document.activeElement) => ({
     terminalFocus: getTerminalFocusOwner() !== null,
     terminalOpen: Boolean(terminalUiState.terminalOpen),
@@ -2697,6 +2712,7 @@ export default function ChatView(props: ChatViewProps) {
     draftThreadRoute: routeKind === "draft",
     turnRunning: phase === "running" || phase === "connecting",
     composerRequiresModifier: composerRequiresModifier(settings.sendShortcut, promptRef.current),
+    approvalPending: answerableApproval !== null,
     isWeb: !isElectron,
     isDesktop: isElectron,
   });
@@ -2758,6 +2774,8 @@ export default function ChatView(props: ChatViewProps) {
         if (!canInterruptRunningThread) return false;
         if (!event.repeat) void onInterruptStable();
       },
+      "approval.accept": ({ event }) => answerApprovalByShortcut(event, "accept"),
+      "approval.decline": ({ event }) => answerApprovalByShortcut(event, "decline"),
     },
     fallback: (command) => {
       const scriptId = projectScriptIdFromCommand(command);
