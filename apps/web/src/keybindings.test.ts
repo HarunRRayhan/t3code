@@ -203,6 +203,31 @@ const DEFAULT_BINDINGS = compile([
   },
 ]);
 
+describe("thread archive and delete defaults", () => {
+  it("bind their own chords, which no other default uses", () => {
+    for (const [command, shiftKey] of [
+      ["thread.archive", false],
+      ["thread.delete", true],
+    ] as const) {
+      const chord = event({ key: "Backspace", metaKey: true, altKey: true, shiftKey });
+      assert.strictEqual(
+        resolveShortcutCommand(chord, DEFAULT_RESOLVED_KEYBINDINGS, { platform: "MacIntel" }),
+        command,
+      );
+      const sharing = DEFAULT_RESOLVED_KEYBINDINGS.filter(
+        (binding) =>
+          binding.shortcut.key === "backspace" &&
+          binding.shortcut.altKey &&
+          binding.shortcut.shiftKey === shiftKey,
+      );
+      assert.deepStrictEqual(
+        sharing.map((binding) => binding.command),
+        [command],
+      );
+    }
+  });
+});
+
 describe("effectiveShortcutsForCommand", () => {
   it("passes only effective preview shortcuts to the desktop bridge", () => {
     const reopen = modShortcut("t", { shiftKey: true });
