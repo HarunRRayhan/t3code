@@ -58,7 +58,9 @@ export function SidebarStatusBoard() {
               title={entry.name}
             >
               <entry.Icon />
-              <span className="tabular-nums">{countLabel(counts[entry.value])}</span>
+              <span className="pointer-events-none absolute right-0 bottom-0 text-3xs leading-none tabular-nums">
+                {countLabel(counts[entry.value])}
+              </span>
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
