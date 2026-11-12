@@ -2,8 +2,7 @@ import { ActivityIcon, BellRingIcon, ListIcon } from "lucide-react";
 
 import { useThreadUndoNotice } from "../../hooks/showThreadUndoNotice";
 import { cn } from "../../lib/utils";
-import type { SidebarStatusFilter } from "../Sidebar.logic";
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { Toggle } from "../ui/toggle";
 import { SidebarMenuItem } from "../ui/sidebar";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { useSidebarStatusCounts, useSidebarStatusFilter } from "./sidebarStatusFilter";
@@ -45,41 +44,36 @@ export function SidebarStatusBoard() {
           noticeShown && "opacity-0 [transform:rotateX(90deg)]",
         )}
       >
-        <ToggleGroup
-          aria-label="Filter threads by status"
-          size="xs"
-          value={[filter]}
-          onValueChange={(next) => {
-            const picked = next[0];
-            if (picked !== undefined) setFilter(picked as SidebarStatusFilter);
-          }}
-        >
+        <div role="group" aria-label="Filter threads by status" className="flex items-center gap-3">
           {FILTERS.map((entry) => (
-            <ToggleGroupItem
+            <Toggle
               key={entry.value}
-              value={entry.value}
+              size="xs"
+              variant="ghost"
+              pressed={filter === entry.value}
+              onPressedChange={() => setFilter(entry.value)}
               aria-label={`${entry.name}: ${counts[entry.value]}`}
               title={entry.name}
             >
               <span className="relative grid place-items-center">
                 <entry.Icon
                   className={cn(
-                    "opacity-40",
-                    filter === entry.value ? entry.color : "text-muted-foreground",
+                    "size-4",
+                    filter === entry.value ? entry.color : "text-sidebar-muted-foreground",
                   )}
                 />
                 <span
                   className={cn(
-                    "pointer-events-none absolute text-3xs leading-none font-semibold tabular-nums",
+                    "pointer-events-none absolute -right-2 -bottom-2 text-2xs leading-none font-bold tabular-nums [paint-order:stroke] [-webkit-text-stroke:2.5px_var(--sidebar)]",
                     entry.color,
                   )}
                 >
                   {countLabel(counts[entry.value])}
                 </span>
               </span>
-            </ToggleGroupItem>
+            </Toggle>
           ))}
-        </ToggleGroup>
+        </div>
       </div>
       <SidebarThreadUndoNotice />
     </SidebarMenuItem>
