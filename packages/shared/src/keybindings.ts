@@ -133,7 +133,7 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+shift+c", command: "thread.copyReference", when: "!terminalFocus" },
   { key: "mod+shift+s", command: "thread.settle", when: "!terminalFocus" },
   { key: "mod+shift+p", command: "thread.pin", when: "!terminalFocus" },
-  { key: "mod+alt+backspace", command: "thread.archive", when: "!terminalFocus" },
+  { key: "mod+shift+w", command: "thread.archive", when: "!terminalFocus" },
   { key: "mod+alt+shift+backspace", command: "thread.delete", when: "!terminalFocus" },
   { key: "mod+z", command: "thread.undo", when: "!terminalFocus && !editableFocus" },
   ...THREAD_JUMP_KEYBINDING_COMMANDS.map((command, index) => ({
