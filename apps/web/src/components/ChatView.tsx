@@ -2705,23 +2705,29 @@ export default function ChatView(props: ChatViewProps) {
             entry.approval.responseCapability === "live" &&
             readEnvironmentScope(entry.thread.environmentId, AuthOrchestrationOperateScope),
         ) ?? null);
+  const respondingChildApprovalIds = useRef(new Set<string>());
+  // A draft holds sub-agent approvals like the typing guard holds the thread's own: the chord stays a send.
+  const childApprovalAnswerable = () =>
+    answerableChildApproval !== null &&
+    promptRef.current.trim() === "" &&
+    !respondingChildApprovalIds.current.has(answerableChildApproval.approval.requestId);
   const answerApprovalByShortcut = (event: KeyboardEvent, decision: "accept" | "decline") => {
-    const target = answerableApproval ?? answerableChildApproval?.approval ?? null;
+    const target =
+      answerableApproval ??
+      (childApprovalAnswerable() ? answerableChildApproval?.approval : undefined);
     // A provider that lists its own options may not offer this decision.
-    if (target === null || target.options?.some((option) => option.decision === decision) === false)
+    if (!target || target.options?.some((option) => option.decision === decision) === false)
       return false;
     if (event.repeat) return;
     if (answerableApproval !== null) {
       void onRespondToApprovalStable(answerableApproval.requestId, decision);
     } else if (answerableChildApproval !== null) {
+      const requestId = answerableChildApproval.approval.requestId;
+      respondingChildApprovalIds.current.add(requestId);
       void respondToChildApproval({
         environmentId: answerableChildApproval.thread.environmentId,
-        input: {
-          threadId: answerableChildApproval.thread.threadId,
-          requestId: answerableChildApproval.approval.requestId,
-          decision,
-        },
-      });
+        input: { threadId: answerableChildApproval.thread.threadId, requestId, decision },
+      }).finally(() => respondingChildApprovalIds.current.delete(requestId));
     }
   };
   const getShortcutContext = (eventTarget: EventTarget | null = document.activeElement) => ({
@@ -2737,7 +2743,7 @@ export default function ChatView(props: ChatViewProps) {
     draftThreadRoute: routeKind === "draft",
     turnRunning: phase === "running" || phase === "connecting",
     composerRequiresModifier: composerRequiresModifier(settings.sendShortcut, promptRef.current),
-    approvalPending: answerableApproval !== null || answerableChildApproval !== null,
+    approvalPending: answerableApproval !== null || childApprovalAnswerable(),
     isWeb: !isElectron,
     isDesktop: isElectron,
   });
