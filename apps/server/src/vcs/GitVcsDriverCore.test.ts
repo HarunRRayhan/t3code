@@ -6,6 +6,7 @@ import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { assert, it, describe } from "@effect/vitest";
+import { vi } from "vite-plus/test";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";
@@ -647,6 +648,25 @@ it.effect.each(["bare", "unborn"] as const)(
         assert.equal(spawnedArgs.filter((args) => args.includes("--git-common-dir")).length, 1);
       }),
     ).pipe(Effect.provide(layerTest)),
+);
+
+it.effect("reads the project's own repository when the server inherited GIT_DIR", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const cwd = yield* makeTmpDir();
+      const other = yield* makeTmpDir();
+      const { initialBranch } = yield* initRepoWithCommit(cwd);
+      yield* initRepoWithCommit(other);
+      yield* git(other, ["switch", "-c", "other-repository"]);
+      const driver = yield* GitVcsDriver.GitVcsDriver;
+      yield* Effect.addFinalizer(() => Effect.sync(() => vi.unstubAllEnvs()));
+      vi.stubEnv("GIT_DIR", path.join(other, ".git"));
+      assert.equal((yield* driver.statusDetailsLocal(cwd)).branch, initialBranch);
+      const refs = yield* driver.listRefs({ cwd });
+      assert.isFalse(refs.refs.some((ref) => ref.name === "other-repository"));
+    }),
+  ).pipe(Effect.provide(layerTest)),
 );
 
 it.effect.each(["on a branch", "detached", "unborn"] as const)(
@@ -5466,6 +5486,22 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
         );
         assert.equal(yield* fileSystem.exists(created.worktree.path), true);
 
+        yield* git(cwd, ["worktree", "remove", "--force", created.worktree.path]);
+        yield* git(cwd, ["branch", "-D", "feature/custom-dir"]);
+        yield* fileSystem.makeDirectory(created.worktree.path);
+        const leftover = pathService.join(created.worktree.path, "notes.txt");
+        yield* fileSystem.writeFileString(leftover, "my notes");
+        const recreated = yield* driver.createWorktree(
+          { cwd, path: null, refName: initialBranch, newRefName: "feature/custom-dir" },
+          { worktreesDirectory },
+        );
+        assert.notEqual(recreated.worktree.path, created.worktree.path);
+        assert.equal(
+          yield* git(recreated.worktree.path, ["branch", "--show-current"]),
+          "feature/custom-dir",
+        );
+        assert.deepEqual(yield* fileSystem.readDirectory(created.worktree.path), ["notes.txt"]);
+
         const error = yield* driver
           .createWorktree(
             { cwd, path: null, refName: initialBranch, newRefName: "feature/relative-dir" },
@@ -6454,6 +6490,45 @@ it.layer(layerTest)("GitVcsDriver core integration", (it) => {
           if (conflict)
             assert.equal(yield* git(cwd, ["show", "HEAD:README.md"]), "resolved version");
         }),
+    );
+
+    it.effect.each([
+      { operation: "cherry-pick", head: "CHERRY_PICK_HEAD" },
+      { operation: "revert", head: "REVERT_HEAD" },
+    ])("rejects selected-file commits during a $operation", ({ operation, head }) =>
+      Effect.gen(function* () {
+        const cwd = yield* makeTmpDir();
+        const { initialBranch } = yield* initRepoWithCommit(cwd);
+        const driver = yield* GitVcsDriver.GitVcsDriver;
+        yield* git(cwd, ["checkout", "-b", "other"]);
+        yield* writeTextFile(cwd, "README.md", "other version\n");
+        yield* writeTextFile(cwd, "picked.txt", "picked\n");
+        yield* git(cwd, ["add", "."]);
+        yield* git(cwd, ["commit", "-m", "Other"]);
+        if (operation === "cherry-pick") yield* git(cwd, ["checkout", initialBranch]);
+        yield* writeTextFile(cwd, "README.md", "main version\n");
+        yield* git(cwd, ["commit", "-am", "Main"]);
+        const originalHead = yield* git(cwd, ["rev-parse", "HEAD"]);
+        const result = yield* driver.execute({
+          operation: `test.${operation}`,
+          cwd,
+          args: [operation, operation === "cherry-pick" ? "other" : "HEAD~1"],
+          allowNonZeroExit: true,
+        });
+        assert.equal(result.exitCode, 1);
+        yield* writeTextFile(cwd, "README.md", "resolved version\n");
+        yield* git(cwd, ["add", "README.md"]);
+        const gitDir = yield* git(cwd, ["rev-parse", "--absolute-git-dir"]);
+        const selected = operation === "cherry-pick" ? "picked.txt" : "README.md";
+
+        const commit = yield* driver
+          .commit(cwd, "Partial", "", { stage: { filePaths: [selected] } })
+          .pipe(Effect.result);
+
+        assert.isTrue(Result.isFailure(commit), `Selected-file ${operation} commit succeeded`);
+        assert.equal(yield* git(cwd, ["rev-parse", "HEAD"]), originalHead);
+        assert.isTrue(NodeFS.existsSync(`${gitDir}/${head}`));
+      }),
     );
 
     it.effect("treats selected file paths literally", () =>
