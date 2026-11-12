@@ -1,18 +1,27 @@
 import { ActivityIcon, BellRingIcon, ListIcon } from "lucide-react";
 
 import { useThreadUndoNotice } from "../../hooks/showThreadUndoNotice";
-import { useQuietThreadShells } from "../../state/entities";
 import { cn } from "../../lib/utils";
-import { isThreadActionNeeded, type SidebarStatusFilter } from "../Sidebar.logic";
+import type { SidebarStatusFilter } from "../Sidebar.logic";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { SidebarMenuItem } from "../ui/sidebar";
 import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
-import { useSidebarStatusFilter } from "./sidebarStatusFilter";
+import { useSidebarStatusCounts, useSidebarStatusFilter } from "./sidebarStatusFilter";
 
 const FILTERS = [
-  { value: "all", Icon: ListIcon, name: "All threads" },
-  { value: "action", Icon: BellRingIcon, name: "Action needed" },
-  { value: "others", Icon: ActivityIcon, name: "Others" },
+  {
+    value: "all",
+    Icon: ListIcon,
+    name: "All threads",
+    color: "text-emerald-600 dark:text-emerald-300/90",
+  },
+  {
+    value: "action",
+    Icon: BellRingIcon,
+    name: "Action needed",
+    color: "text-amber-600 dark:text-amber-300/90",
+  },
+  { value: "others", Icon: ActivityIcon, name: "Others", color: "text-muted-foreground" },
 ] as const;
 
 const countLabel = (count: number) => (count > 99 ? "99+" : String(count));
@@ -24,12 +33,7 @@ const countLabel = (count: number) => (count > 99 ? "99+" : String(count));
 export function SidebarStatusBoard() {
   const [filter, setFilter] = useSidebarStatusFilter();
   const noticeShown = useThreadUndoNotice((state) => state.notice !== null);
-  const live = useQuietThreadShells().filter(
-    (thread) =>
-      thread.archivedAt == null && thread.deletedAt == null && thread.settledOverride !== "settled",
-  );
-  const action = live.filter(isThreadActionNeeded).length;
-  const counts = { all: live.length, action, others: live.length - action };
+  const counts = useSidebarStatusCounts();
 
   return (
     <SidebarMenuItem className="relative flex h-6 min-w-0 flex-1 [perspective:400px]">
@@ -57,9 +61,11 @@ export function SidebarStatusBoard() {
               aria-label={`${entry.name}: ${counts[entry.value]}`}
               title={entry.name}
             >
-              <entry.Icon />
-              <span className="pointer-events-none absolute right-0 bottom-0 text-3xs leading-none tabular-nums">
-                {countLabel(counts[entry.value])}
+              <span className={cn("relative grid place-items-center", entry.color)}>
+                <entry.Icon className="opacity-40" />
+                <span className="pointer-events-none absolute text-3xs leading-none font-semibold tabular-nums">
+                  {countLabel(counts[entry.value])}
+                </span>
               </span>
             </ToggleGroupItem>
           ))}
