@@ -274,6 +274,29 @@ it.layer(NodeServices.layer)("keybindings", (it) => {
     }).pipe(Effect.provide(layerKeybindings())),
   );
 
+  it.effect("backfills approval chords after existing rules", () =>
+    Effect.gen(function* () {
+      const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;
+      const keybindings = yield* Keybindings.Keybindings;
+      const existing = {
+        key: "mod+enter",
+        command: "composer.sendAlternate",
+        when: "composerFocus && turnRunning",
+      } as const;
+      yield* writeKeybindingsConfig(keybindingsConfigPath, [existing]);
+
+      yield* keybindings.syncDefaultKeybindingsOnStartup;
+      const commands = (yield* readKeybindingsConfig(keybindingsConfigPath)).map(
+        (entry) => entry.command,
+      );
+      assert.deepStrictEqual(commands.slice(-3), [
+        "composer.sendAlternate",
+        "approval.accept",
+        "approval.decline",
+      ]);
+    }).pipe(Effect.provide(layerKeybindings())),
+  );
+
   it.effect("leaves a customized command without the late default", () =>
     Effect.gen(function* () {
       const { keybindingsConfigPath } = yield* ServerConfig.ServerConfig;

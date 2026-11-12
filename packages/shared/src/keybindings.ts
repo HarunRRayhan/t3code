@@ -109,6 +109,9 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
     command: "composer.sendAndNewThread",
     when: "composerFocus && !draftThreadRoute",
   },
+  // After the composer send chords: the last matching rule wins while an approval waits.
+  { key: "mod+enter", command: "approval.accept", when: "approvalPending" },
+  { key: "mod+backspace", command: "approval.decline", when: "approvalPending" },
   { key: "mod+n", command: "chat.new", when: "!terminalFocus" },
   { key: "mod+shift+o", command: "chat.new", when: "!terminalFocus" },
   { key: "mod+shift+n", command: "chat.newLocal", when: "!terminalFocus" },

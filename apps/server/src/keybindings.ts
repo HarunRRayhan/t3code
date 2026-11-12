@@ -543,7 +543,13 @@ const make = Effect.gen(function* () {
         });
       }
       if (defaultsToAppend.length > 0) {
-        yield* writeConfigAtomically([...defaultsToAppend, ...customConfig]);
+        // Approval chords go last: they must outrank a persisted composer rule on the same key.
+        const isApprovalRule = (rule: KeybindingRule) => rule.command.startsWith("approval.");
+        yield* writeConfigAtomically([
+          ...defaultsToAppend.filter((rule) => !isApprovalRule(rule)),
+          ...customConfig,
+          ...defaultsToAppend.filter(isApprovalRule),
+        ]);
       }
       const settledLateDefaults = pendingLateDefaults.filter(
         (late) => !skippedDefaults.includes(late.rule),

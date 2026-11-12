@@ -899,6 +899,24 @@ describe("composer and pull request shortcuts", () => {
     },
   );
 
+  it("lets a pending approval take mod+enter from the composer", () => {
+    const context = { composerFocus: true, turnRunning: true };
+    for (const [approvalPending, key, command] of [
+      [true, "Enter", "approval.accept"],
+      [true, "Backspace", "approval.decline"],
+      [false, "Enter", "composer.sendAlternate"],
+      [false, "Backspace", null],
+    ] as const) {
+      assert.strictEqual(
+        resolveShortcutCommand(event({ key, metaKey: true }), DEFAULT_RESOLVED_KEYBINDINGS, {
+          platform: "MacIntel",
+          context: { ...context, approvalPending },
+        }),
+        command,
+      );
+    }
+  });
+
   const altEffortBindings = compileResolvedKeybindingsConfig([
     { key: "mod+alt+e", command: "composer.effort", when: "!terminalFocus" },
   ]);
