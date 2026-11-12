@@ -499,11 +499,11 @@ function useSidebarThreads(input: {
 
   const { pinnedThreads, activeThreads, workingThreads, snoozedThreads, settledThreads } =
     partition;
-  const { statusCounts } = partition;
+  const { all: allCount, action: actionCount, others: othersCount } = partition.statusCounts;
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- publishes the list's counts to the footer, a separate tree with no access to this scope
   useEffect(() => {
-    publishSidebarStatusCounts(statusCounts);
-  }, [statusCounts.all, statusCounts.action, statusCounts.others]);
+    publishSidebarStatusCounts({ all: allCount, action: actionCount, others: othersCount });
+  }, [allCount, actionCount, othersCount]);
   // Older settled threads load in pages; the shelf lists them only as far as they are loaded.
   const olderSettledShelf = useOlderSettledShelf({
     scopes: olderSettledScopes([...serverConfigs.keys()], scopedProjectKeys),
