@@ -469,13 +469,14 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
         <>
           {modelRow}
           {fallbackRow}
+          {planModeRows}
           {workspaceRow}
         </>
       ) : category === "general" ? (
         <>
           {modelRow}
-          {planModeRows}
           {fallbackRow}
+          {planModeRows}
           <SettingsRow
             serverScoped
             settingKeys={["defaultRuntimeMode"]}
