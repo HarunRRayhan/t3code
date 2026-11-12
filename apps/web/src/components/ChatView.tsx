@@ -245,7 +245,7 @@ import { useEnvironmentQueryRefresh } from "../state/query";
 import { useEnvironmentScope } from "~/state/session";
 import { primaryServerKeybindingsAtom, serverEnvironment } from "../state/server";
 import { hostEnvironmentIdAtom } from "../state/primaryEnvironment";
-import { threadEnvironment } from "../state/threads";
+import { childThreadApprovalsAtom, threadEnvironment } from "../state/threads";
 import {
   resolveProviderSkillsForCwd,
   resolveProvidersForCwd,
@@ -2737,12 +2737,37 @@ export default function ChatView(props: ChatViewProps) {
     !heldApprovalRequestIds.has(activePendingApproval.requestId)
       ? activePendingApproval
       : null;
+  // With no approval of its own, the chord answers the first sub-agent approval shown above the composer.
+  const childApprovals = useAtomValue(childThreadApprovalsAtom(activeThreadRef));
+  const respondToChildApproval = useAtomCommand(threadEnvironment.respondToApproval, {
+    reportFailure: false,
+  });
+  const answerableChildApproval =
+    answerableApproval !== null
+      ? null
+      : (childApprovals.find(
+          (entry) =>
+            entry.approval.responseCapability === "live" &&
+            readEnvironmentScope(entry.thread.environmentId, AuthOrchestrationOperateScope),
+        ) ?? null);
   const answerApprovalByShortcut = (event: KeyboardEvent, decision: "accept" | "decline") => {
+    const target = answerableApproval ?? answerableChildApproval?.approval ?? null;
     // A provider that lists its own options may not offer this decision.
-    if (answerableApproval?.options?.some((option) => option.decision === decision) === false)
+    if (target === null || target.options?.some((option) => option.decision === decision) === false)
       return false;
-    if (answerableApproval === null) return false;
-    if (!event.repeat) void onRespondToApprovalStable(answerableApproval.requestId, decision);
+    if (event.repeat) return;
+    if (answerableApproval !== null) {
+      void onRespondToApprovalStable(answerableApproval.requestId, decision);
+    } else if (answerableChildApproval !== null) {
+      void respondToChildApproval({
+        environmentId: answerableChildApproval.thread.environmentId,
+        input: {
+          threadId: answerableChildApproval.thread.threadId,
+          requestId: answerableChildApproval.approval.requestId,
+          decision,
+        },
+      });
+    }
   };
   const getShortcutContext = (eventTarget: EventTarget | null = document.activeElement) => ({
     terminalFocus: getTerminalFocusOwner() !== null,
@@ -2757,7 +2782,7 @@ export default function ChatView(props: ChatViewProps) {
     draftThreadRoute: routeKind === "draft",
     turnRunning: phase === "running" || phase === "connecting",
     composerRequiresModifier: composerRequiresModifier(settings.sendShortcut, promptRef.current),
-    approvalPending: answerableApproval !== null,
+    approvalPending: answerableApproval !== null || answerableChildApproval !== null,
     isWeb: !isElectron,
     isDesktop: isElectron,
   });
