@@ -41,6 +41,7 @@ import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
 import { resolveDraftHeroState } from "./ChatView.logic";
 import { useQueuedRunEdit } from "./chat/useQueuedRunEdit";
 import { recallCheckoutIsRepo, rememberCheckoutIsRepo } from "./ChatView.logic";
+import { resolveProjectPlanSettings } from "../lib/projectPlanSettings";
 import { useLogicalProjectEnvironments } from "../hooks/useLogicalProjectEnvironments";
 import { useStableCallback } from "../hooks/useStableCallback";
 import { useProjectScriptEditing } from "./chat/useProjectScriptEditing";
@@ -1137,10 +1138,22 @@ export default function ChatView(props: ChatViewProps) {
   };
   const handleNewThreadInActiveProjectStable = useStableCallback(handleNewThreadInActiveProject);
   const projectGroupingSettings = selectProjectGroupingSettings(settings);
+  const activeLogicalProjectKey = activeProject
+    ? deriveLogicalProjectKeyFromSettings(activeProject, projectGroupingSettings)
+    : null;
   const activeDraftLogicalProjectKey =
-    !isServerThread && activeProject
-      ? deriveLogicalProjectKeyFromSettings(activeProject, projectGroupingSettings)
-      : undefined;
+    !isServerThread && activeLogicalProjectKey ? activeLogicalProjectKey : undefined;
+  const projectPlan = resolveProjectPlanSettings(settings, activeLogicalProjectKey);
+  // The composer reads Plan options from settings, so hand it this project's values.
+  const composerSettings =
+    projectPlan.startInPlan === settings.newThreadsStartInPlan &&
+    projectPlan.planModelSelection === settings.planModelSelection
+      ? settings
+      : {
+          ...settings,
+          newThreadsStartInPlan: projectPlan.startInPlan,
+          planModelSelection: projectPlan.planModelSelection,
+        };
   const handleOpenDraftProjectSettings = () => {
     if (!activeDraftLogicalProjectKey) return;
     void navigate({
@@ -1344,9 +1357,7 @@ export default function ChatView(props: ChatViewProps) {
     provider: activeProviderStatus,
     interactionMode:
       composerInteractionMode ??
-      (settings.newThreadsStartInPlan &&
-      activeThread !== undefined &&
-      !threadHasStarted(activeThread)
+      (projectPlan.startInPlan && activeThread !== undefined && !threadHasStarted(activeThread)
         ? "plan"
         : (activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE)),
   });
@@ -2901,6 +2912,7 @@ export default function ChatView(props: ChatViewProps) {
     activeRuntime,
     activeProjectSettings,
     settings,
+    projectKey: activeLogicalProjectKey,
     providerStatuses,
     lockedProvider,
     supportsProviderSwitchingViaHandoff,
@@ -3755,7 +3767,7 @@ export default function ChatView(props: ChatViewProps) {
                                 compactThreadUnavailable={compactThreadUnavailable}
                                 compactDisabled={compactDisabled}
                                 resolvedTheme={resolvedTheme}
-                                settings={settings}
+                                settings={composerSettings}
                                 keybindings={keybindings}
                                 terminalOpen={Boolean(terminalUiState.terminalOpen)}
                                 gitCwd={gitCwd}

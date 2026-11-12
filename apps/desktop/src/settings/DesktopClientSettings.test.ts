@@ -66,6 +66,7 @@ const clientSettings: ClientSettings = {
   newThreadsStartInPlan: false,
   planModelSelection: null,
   buildModelSelection: null,
+  projectPlanOverrides: {},
   boringSidebarMultilineRows: false,
   threadDetailsUsageEnabled: false,
   threadDetailsItems: {},

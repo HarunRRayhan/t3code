@@ -20,7 +20,10 @@ const testState = vi.hoisted(() => {
   } | null = null;
   let openDraftRoute: { readonly kind: "draft"; readonly draftId: string } | null = null;
   let draftsWithUserText = new Set<string>();
-  let clientSettings: { newThreadsStartInPlan?: boolean } = {};
+  let clientSettings: {
+    newThreadsStartInPlan?: boolean;
+    projectPlanOverrides?: Record<string, { startInPlan?: boolean }>;
+  } = {};
   const router = {
     state: {
       location: { href: "/" },
@@ -259,7 +262,9 @@ vi.mock("../uiStateStore", () => ({
   legacyProjectCwdPreferenceKey: () => "remote-project",
   useUiStateStore: () => [],
 }));
-vi.mock("./useSettings", () => ({ getClientSettings: () => testState.clientSettings }));
+vi.mock("./useSettings", () => ({
+  getClientSettings: () => ({ projectPlanOverrides: {}, ...testState.clientSettings }),
+}));
 
 import { resolveDefaultProjectRef, useNewThreadHandler } from "./useHandleNewThread";
 
@@ -371,6 +376,14 @@ describe("useNewThreadHandler", () => {
     expect(testState.draftStore.setInteractionMode).not.toHaveBeenCalled();
 
     testState.reset(stored);
+    await useNewThreadHandler()(project);
+    expect(testState.draftStore.setInteractionMode).not.toHaveBeenCalled();
+
+    testState.reset(stored);
+    testState.setClientSettings({
+      newThreadsStartInPlan: true,
+      projectPlanOverrides: { "remote-project": { startInPlan: false } },
+    });
     await useNewThreadHandler()(project);
     expect(testState.draftStore.setInteractionMode).not.toHaveBeenCalled();
   });

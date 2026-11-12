@@ -28,6 +28,8 @@ import { Switch } from "../ui/switch";
 import { resolveDefaultModelSettingsPresentation } from "./ProjectDefaultsSettings.logic";
 import type { ProjectSettingsCategory } from "./ProjectSettingsPanel";
 import { searchableSetting } from "./settingsSearch";
+import { persistClientSettingsPatch } from "../../hooks/useSettings";
+import { resolveProjectPlanSettings } from "../../lib/projectPlanSettings";
 import { useSettingsScope } from "./SettingsScopeContext";
 import {
   SETTINGS_PICKER_TRIGGER_CLASSNAME,
@@ -246,7 +248,44 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
   );
 
   // Client settings, so no serverScoped: Plan mode and its model are the same on every environment.
-  const planSelection = settings.planModelSelection ?? selection;
+  // A project scope edits that project's override, which inherits the global value until set.
+  const planProjectKey =
+    scope.kind === "project" || scope.kind === "checkout" ? scope.group.projectKey : null;
+  const planOverride = planProjectKey ? settings.projectPlanOverrides[planProjectKey] : undefined;
+  const projectPlan = resolveProjectPlanSettings(settings, planProjectKey);
+  const writePlanOverride = (next: NonNullable<typeof planOverride>) => {
+    if (planProjectKey === null) return;
+    const others = Object.fromEntries(
+      Object.entries(settings.projectPlanOverrides).filter(([key]) => key !== planProjectKey),
+    );
+    void persistClientSettingsPatch({
+      projectPlanOverrides:
+        Object.keys(next).length === 0 ? others : { ...others, [planProjectKey]: next },
+    });
+  };
+  const setStartInPlan = (startInPlan: boolean) =>
+    planProjectKey === null
+      ? updateSettings({ newThreadsStartInPlan: startInPlan })
+      : writePlanOverride({ ...planOverride, startInPlan });
+  const setPlanModel = (planModelSelection: ModelSelection | null) =>
+    planProjectKey === null
+      ? updateSettings({ planModelSelection })
+      : writePlanOverride({ ...planOverride, planModelSelection });
+  const planModelIsSet = projectPlan.planModelSelection !== null;
+  const planModelCanReset =
+    planProjectKey === null
+      ? settings.planModelSelection !== null
+      : planOverride?.planModelSelection !== undefined;
+  const resetPlanModel = () => {
+    if (planProjectKey === null) return updateSettings({ planModelSelection: null });
+    const { planModelSelection: _dropped, ...rest } = planOverride ?? {};
+    writePlanOverride(rest);
+  };
+  const resetStartInPlan = () => {
+    const { startInPlan: _dropped, ...rest } = planOverride ?? {};
+    writePlanOverride(rest);
+  };
+  const planSelection = projectPlan.planModelSelection ?? selection;
   const planEntry = entries.find((entry) => entry.instanceId === planSelection?.instanceId);
   const planModelOptions = getCustomModelOptionsByInstance(
     settings,
@@ -254,97 +293,99 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
     planSelection?.instanceId,
     planSelection?.model,
   );
-  const planModeRows =
-    !isProjectScope && settings.planModeEnabled ? (
-      <>
-        <SettingsRow
-          {...searchableSetting("new-threads-start-in-plan")}
-          description="Whether a new thread opens in Build or Plan mode. Threads you already started keep their mode."
-          control={
-            <Select
-              value={settings.newThreadsStartInPlan ? "plan" : "build"}
-              onValueChange={(value) => {
-                if (value === "build" || value === "plan")
-                  updateSettings({ newThreadsStartInPlan: value === "plan" });
-              }}
-            >
-              <SelectTrigger size="sm" aria-label="Start new threads in">
-                <SelectValue>{settings.newThreadsStartInPlan ? "Plan" : "Build"}</SelectValue>
-              </SelectTrigger>
-              <SelectPopup align="end" alignItemWithTrigger={false}>
-                <SelectItem value="build">Build</SelectItem>
-                <SelectItem value="plan">Plan</SelectItem>
-              </SelectPopup>
-            </Select>
-          }
-        />
-        <SettingsRow
-          {...searchableSetting("plan-model")}
-          description="Plan mode starts on this model. Switching to Build goes back to the default model above."
-          resetAction={
-            settings.planModelSelection !== null ? (
-              <SettingResetButton
-                label="plan model"
-                onClick={() => updateSettings({ planModelSelection: null })}
+  const planModeRows = settings.planModeEnabled ? (
+    <>
+      <SettingsRow
+        {...searchableSetting("new-threads-start-in-plan")}
+        description={
+          planProjectKey === null
+            ? "Whether a new thread opens in Build or Plan mode. Threads you already started keep their mode."
+            : "Whether a new thread in this project opens in Build or Plan mode. Follows the global setting until you change it here."
+        }
+        resetAction={
+          planProjectKey !== null && planOverride?.startInPlan !== undefined ? (
+            <SettingResetButton label="new thread mode" onClick={resetStartInPlan} />
+          ) : null
+        }
+        control={
+          <Select
+            value={projectPlan.startInPlan ? "plan" : "build"}
+            onValueChange={(value) => {
+              if (value === "build" || value === "plan") setStartInPlan(value === "plan");
+            }}
+          >
+            <SelectTrigger size="sm" aria-label="Start new threads in">
+              <SelectValue>{projectPlan.startInPlan ? "Plan" : "Build"}</SelectValue>
+            </SelectTrigger>
+            <SelectPopup align="end" alignItemWithTrigger={false}>
+              <SelectItem value="build">Build</SelectItem>
+              <SelectItem value="plan">Plan</SelectItem>
+            </SelectPopup>
+          </Select>
+        }
+      />
+      <SettingsRow
+        {...searchableSetting("plan-model")}
+        description={
+          planProjectKey === null
+            ? "Plan mode starts on this model. Switching to Build goes back to the default model above."
+            : "Plan mode in this project starts on this model. Follows the global plan model until you change it here."
+        }
+        resetAction={
+          planModelCanReset ? (
+            <SettingResetButton label="plan model" onClick={resetPlanModel} />
+          ) : null
+        }
+        control={
+          planSelection ? (
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+              <ProviderModelPicker
+                environmentId={representative?.environmentId ?? null}
+                activeInstanceId={planSelection.instanceId}
+                model={planSelection.model}
+                lockedProvider={null}
+                instanceEntries={entries}
+                modelOptionsByInstance={planModelOptions}
+                triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
+                triggerAriaLabel="Default plan model"
+                {...(!planModelIsSet ? { triggerLabel: "Same as default" } : {})}
+                getModelDisabledReason={modelDisabledReason}
+                onInstanceModelChange={(instanceId, model) => {
+                  const reason = modelDisabledReason(instanceId, model);
+                  if (reason) {
+                    toastManager.add({
+                      type: "error",
+                      title: "Plan model not saved",
+                      description: reason,
+                    });
+                    return;
+                  }
+                  setPlanModel(createModelSelection(instanceId, model));
+                }}
               />
-            ) : null
-          }
-          control={
-            planSelection ? (
-              <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-                <ProviderModelPicker
-                  environmentId={representative?.environmentId ?? null}
-                  activeInstanceId={planSelection.instanceId}
+              {planModelIsSet && planEntry ? (
+                <TraitsPicker
+                  provider={planEntry.driverKind}
+                  models={planEntry.models}
                   model={planSelection.model}
-                  lockedProvider={null}
-                  instanceEntries={entries}
-                  modelOptionsByInstance={planModelOptions}
+                  modelOptions={planSelection.options ?? []}
+                  allowPromptInjectedEffort={false}
                   triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
-                  triggerAriaLabel="Default plan model"
-                  {...(settings.planModelSelection === null
-                    ? { triggerLabel: "Same as default" }
-                    : {})}
-                  getModelDisabledReason={modelDisabledReason}
-                  onInstanceModelChange={(instanceId, model) => {
-                    const reason = modelDisabledReason(instanceId, model);
-                    if (reason) {
-                      toastManager.add({
-                        type: "error",
-                        title: "Plan model not saved",
-                        description: reason,
-                      });
-                      return;
-                    }
-                    updateSettings({ planModelSelection: createModelSelection(instanceId, model) });
-                  }}
+                  onModelOptionsChange={(options) =>
+                    setPlanModel(
+                      createModelSelection(planSelection.instanceId, planSelection.model, options),
+                    )
+                  }
                 />
-                {settings.planModelSelection !== null && planEntry ? (
-                  <TraitsPicker
-                    provider={planEntry.driverKind}
-                    models={planEntry.models}
-                    model={planSelection.model}
-                    modelOptions={planSelection.options ?? []}
-                    allowPromptInjectedEffort={false}
-                    triggerClassName={SETTINGS_PICKER_TRIGGER_CLASSNAME}
-                    onModelOptionsChange={(options) =>
-                      updateSettings({
-                        planModelSelection: createModelSelection(
-                          planSelection.instanceId,
-                          planSelection.model,
-                          options,
-                        ),
-                      })
-                    }
-                  />
-                ) : null}
-              </div>
-            ) : (
-              <span className="text-sm text-muted-foreground">No providers available</span>
-            )
-          }
-        />
-      </>
-    ) : null;
+              ) : null}
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">No providers available</span>
+          )
+        }
+      />
+    </>
+  ) : null;
 
   const fallbackRow = !isProjectScope ? (
     <SettingsRow

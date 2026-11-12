@@ -396,6 +396,13 @@ export const VoiceTranscriptionDestination = Schema.Union([
 ]);
 export type VoiceTranscriptionDestination = typeof VoiceTranscriptionDestination.Type;
 
+/** One project's Plan options. A missing field inherits the global value; a null model means "same as default". */
+export const ProjectPlanOverride = Schema.Struct({
+  startInPlan: Schema.optionalKey(Schema.Boolean),
+  planModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+});
+export type ProjectPlanOverride = typeof ProjectPlanOverride.Type;
+
 export const ClientSettingsSchema = Schema.Struct({
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
@@ -529,6 +536,10 @@ export const ClientSettingsSchema = Schema.Struct({
   ),
   buildModelSelection: Schema.NullOr(ModelSelection).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  // Keyed by logical project key, so every checkout of a project shares one override.
+  projectPlanOverrides: Schema.Record(TrimmedNonEmptyString, ProjectPlanOverride).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
   ),
   boringSidebarMultilineRows: Schema.Boolean.pipe(
     Schema.withDecodingDefault(Effect.succeed(false)),
@@ -2059,6 +2070,9 @@ export const ClientSettingsPatch = Schema.Struct({
   newThreadsStartInPlan: Schema.optionalKey(Schema.Boolean),
   planModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
   buildModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+  projectPlanOverrides: Schema.optionalKey(
+    Schema.Record(TrimmedNonEmptyString, ProjectPlanOverride),
+  ),
   boringSidebarMultilineRows: Schema.optionalKey(Schema.Boolean),
   toolCallVisibility: Schema.optionalKey(ToolCallVisibility),
   screenReaderAnnouncements: Schema.optionalKey(ScreenReaderAnnouncements),

@@ -37,6 +37,8 @@ interface ComposerSelectionInput {
     readonly settings: { readonly newWorktreesStartFromOrigin: boolean };
   };
   readonly settings: UnifiedSettings;
+  /** The project's logical key; its Plan override, when it has one, takes a Plan-mode model pick. */
+  readonly projectKey: string | null;
   readonly providerStatuses: ReadonlyArray<ServerProvider>;
   readonly lockedProvider: ReturnType<typeof deriveLockedProvider>;
   readonly supportsProviderSwitchingViaHandoff: boolean;
@@ -68,6 +70,7 @@ export function useComposerSelection(input: ComposerSelectionInput) {
     activeRuntime,
     activeProjectSettings,
     settings,
+    projectKey,
     providerStatuses,
     lockedProvider,
     supportsProviderSwitchingViaHandoff,
@@ -210,7 +213,17 @@ export function useComposerSelection(input: ComposerSelectionInput) {
     }
     // Plan mode has its own model: a pick there becomes the Plan model and leaves the thread's own alone.
     if (interactionModeEnabled && interactionMode === "plan") {
-      void updateClientSettings({ planModelSelection: nextModelSelection });
+      const override = projectKey ? settings.projectPlanOverrides[projectKey] : undefined;
+      void updateClientSettings(
+        projectKey && override?.planModelSelection !== undefined
+          ? {
+              projectPlanOverrides: {
+                ...settings.projectPlanOverrides,
+                [projectKey]: { ...override, planModelSelection: nextModelSelection },
+              },
+            }
+          : { planModelSelection: nextModelSelection },
+      );
       if (options?.focusComposer !== false) scheduleComposerFocus();
       return;
     }

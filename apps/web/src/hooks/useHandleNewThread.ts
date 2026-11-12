@@ -41,6 +41,7 @@ import { environmentSummaries } from "../state/presentation";
 import { environmentServerConfigsAtom } from "../state/server";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
+import { resolveProjectPlanSettings } from "../lib/projectPlanSettings";
 import { getClientSettings } from "./useSettings";
 import { getLocalStorageItem, useLocalStorage } from "./useLocalStorage";
 import * as Schema from "effect/Schema";
@@ -304,7 +305,10 @@ export function createNewThreadHandler(router: AnyRouter) {
           });
         }
         // A mode toggled on a draft left empty would otherwise beat "New thread mode: Plan" for good.
-        if (!isDraftAlreadyOpen && getClientSettings().newThreadsStartInPlan) {
+        if (
+          !isDraftAlreadyOpen &&
+          resolveProjectPlanSettings(getClientSettings(), logicalProjectKey).startInPlan
+        ) {
           setInteractionMode(emptyStoredDraftThread.draftId, null);
         }
         const storedDraft = getComposerDraft(emptyStoredDraftThread.draftId);
