@@ -115,6 +115,7 @@ export function createNewThreadHandler(router: AnyRouter) {
       getDraftThread,
       applyStickyState,
       setDraftThreadContext,
+      setInteractionMode,
       setLogicalProjectDraftThreadId,
       setModelSelection,
       setPrompt,
@@ -301,6 +302,10 @@ export function createNewThreadHandler(router: AnyRouter) {
             ...(!isDraftAlreadyOpen ? { runtimeMode: defaultRuntimeMode } : {}),
             ...(carryInteractionMode ? { interactionMode: carryInteractionMode } : {}),
           });
+        }
+        // A mode toggled on a draft left empty would otherwise beat "New thread mode: Plan" for good.
+        if (!isDraftAlreadyOpen && getClientSettings().newThreadsStartInPlan) {
+          setInteractionMode(emptyStoredDraftThread.draftId, null);
         }
         const storedDraft = getComposerDraft(emptyStoredDraftThread.draftId);
         const storedDraftHasExplicitModelPick = hasExplicitComposerModelSelection(storedDraft);
