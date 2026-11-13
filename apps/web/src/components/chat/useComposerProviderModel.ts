@@ -60,7 +60,8 @@ export function useComposerProviderModel(
   );
   const planModel = settings.planModelSelection ?? null;
   const buildModel = settings.buildModelSelection ?? null;
-  const planFirst = planMode && settings.planModeEnabled && planModel !== null;
+  const planEnabled = settings.planModeEnabled && planModel !== null;
+  const planFirst = planMode && planEnabled;
   const selection = resolveComposerProviderSelection({
     entries: providerInstanceEntries,
     candidateInstanceIds: planFirst
@@ -105,8 +106,9 @@ export function useComposerProviderModel(
     includePlanAgent: settings.planModeEnabled,
   });
   // Implement leaves Plan mode, so it sends on the Build model: the one picked in Build mode, else
-  // what this composer resolves without the Plan model. A started thread keeps its provider.
-  const buildSelection = planFirst
+  // what this composer resolves without the Plan model. A started thread keeps its provider. This
+  // holds even when the composer already left Plan mode before Implement was pressed.
+  const buildSelection = planEnabled
     ? resolveComposerProviderSelection({
         entries: providerInstanceEntries,
         candidateInstanceIds,
@@ -143,11 +145,11 @@ export function useComposerProviderModel(
       lockedInstanceId,
     }).selectedProviderEntry?.instanceId === buildModel.instanceId;
   return {
-    implementNeedsNewThread: planFirst && buildModel !== null && !buildModelFitsThread,
-    implementModelSelection: planFirst
+    implementNeedsNewThread: planEnabled && buildModel !== null && !buildModelFitsThread,
+    implementModelSelection: planEnabled
       ? ((buildModelFitsThread ? buildModel : null) ?? buildBaseline)
       : null,
-    newThreadImplementModelSelection: planFirst ? (buildModel ?? buildBaseline) : null,
+    newThreadImplementModelSelection: planEnabled ? (buildModel ?? buildBaseline) : null,
     providerInstanceEntries,
     ...selection,
     selectedInstanceId,
