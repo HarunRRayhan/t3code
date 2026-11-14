@@ -3,6 +3,7 @@ import {
   deriveEffectiveComposerModelState,
   useComposerDraftModelState,
 } from "../../composerDraftStore";
+import { draftModelSelectionApplies } from "../../lib/chatThreadActions";
 import {
   type ModelSelection,
   type ProjectId,
@@ -37,6 +38,7 @@ export function useComposerProviderModel(
     readonly promptInjectionState: ReturnType<typeof getComposerPromptInjectionState>;
     /** Plan mode runs on the Plan model (settings.planModelSelection). */
     readonly planMode: boolean;
+    readonly threadStarted: boolean;
   },
 ) {
   const {
@@ -51,6 +53,7 @@ export function useComposerProviderModel(
     candidateInstanceIds,
     lockedProvider,
     lockedInstanceId,
+    threadStarted,
   } = input;
   const draftModelState = useComposerDraftModelState(threadRef);
   const providerInstanceEntries: ReadonlyArray<ProviderInstanceEntry> = providerInstanceEntriesFor(
@@ -64,9 +67,13 @@ export function useComposerProviderModel(
   const planFirst = planMode && planEnabled;
   const selection = resolveComposerProviderSelection({
     entries: providerInstanceEntries,
-    candidateInstanceIds: planFirst
-      ? [planModel.instanceId, ...candidateInstanceIds]
-      : candidateInstanceIds,
+    candidateInstanceIds: [
+      ...(planFirst ? [planModel.instanceId] : []),
+      draftModelSelectionApplies(draftModelState, threadStarted)
+        ? draftModelState.activeProvider
+        : null,
+      ...candidateInstanceIds,
+    ],
     lockedProvider,
     lockedInstanceId,
   });
@@ -88,6 +95,7 @@ export function useComposerProviderModel(
           modelSelectionByProvider: { [modeOverride.instanceId]: modeOverride },
         }
       : draftModelState,
+    threadStarted,
     providers: providerStatuses,
     selectedProvider,
     selectedInstanceId,
@@ -121,6 +129,7 @@ export function useComposerProviderModel(
     if (!buildSelection || !entry) return null;
     const state = deriveEffectiveComposerModelState({
       draft: draftModelState,
+      threadStarted,
       providers: providerStatuses,
       selectedProvider: entry.driverKind,
       selectedInstanceId: entry.instanceId,
