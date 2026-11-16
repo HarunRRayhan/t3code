@@ -117,17 +117,20 @@ it.each<{ focus: string; control: ReactNode; toggles: boolean }>([
 );
 
 it.each<{ multiSelect: boolean; keys: string; toggled: string[] }>([
+  { multiSelect: false, keys: "{Alt>}2{/Alt}", toggled: ["Big bang"] },
   { multiSelect: false, keys: "{ArrowDown}{ArrowDown}{Enter}", toggled: ["Big bang"] },
   { multiSelect: true, keys: "{ArrowUp}{ }{Enter}", toggled: ["Big bang"] },
   { multiSelect: true, keys: "{ArrowDown}{ArrowDown}{ArrowDown}{ }", toggled: ["Incremental"] },
 ])(
-  "arrow keys in an empty composer pick options (multiSelect: $multiSelect, $keys)",
+  "keys in the composer pick options (multiSelect: $multiSelect, $keys)",
   async ({ multiSelect, keys, toggled }) => {
     const onToggleOption = vi.fn();
     const question = prompt.questions[0]!;
     await using screen = await render(
       <>
-        <div contentEditable data-testid="composer-editor" aria-label="Composer" />
+        <div contentEditable data-testid="composer-editor" aria-label="Composer">
+          {keys.startsWith("{Alt>}") ? "draft" : null}
+        </div>
         <ComposerPendingUserInputPanel
           pendingUserInputs={[
             {
@@ -158,6 +161,8 @@ it.each<{ multiSelect: boolean; keys: string; toggled: string[] }>([
     await userEvent.keyboard(keys);
 
     expect(onToggleOption.mock.calls).toEqual(toggled.map((label) => ["question", label]));
-    expect(screen.getByLabelText("Composer").element().textContent).toBe("");
+    expect(screen.getByLabelText("Composer").element().textContent).toBe(
+      keys.startsWith("{Alt>}") ? "draft" : "",
+    );
   },
 );
