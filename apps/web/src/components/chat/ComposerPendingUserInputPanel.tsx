@@ -171,7 +171,10 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   useEffect(() => {
     if (!activeQuestion || responseDisabled || isCollapsed || backgroundThread) return;
     const handler = (event: globalThis.KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return;
+      if (event.metaKey || event.ctrlKey || event.isComposing) return;
+      // Option+digit picks even over typed text; event.code because macOS Option remaps event.key.
+      const altDigit = event.altKey && !event.shiftKey && /^Digit[1-9]$/.test(event.code);
+      if (event.altKey && !altDigit) return;
       const target = event.target;
       if (isInSideChatPane(target)) return;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
@@ -180,7 +183,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       // An empty composer takes shortcut keys as option picks; once the user types, they are text.
       const composer =
         target instanceof HTMLElement ? target.closest('[data-testid="composer-editor"]') : null;
-      if (composer && composer.textContent?.trim()) return;
+      if (composer && !altDigit && composer.textContent?.trim()) return;
       if (
         !composer &&
         target instanceof HTMLElement &&
@@ -190,14 +193,14 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       ) {
         return;
       }
-      if ((composer || target === document.body) && !event.shiftKey) {
+      if ((composer || target === document.body) && !event.shiftKey && !event.altKey) {
         if (navigateFromShortcut(event.key)) {
           event.preventDefault();
           event.stopPropagation();
           return;
         }
       }
-      const digit = Number.parseInt(event.key, 10);
+      const digit = Number.parseInt(altDigit ? event.code.slice(5) : event.key, 10);
       if (Number.isNaN(digit) || digit < 1 || digit > 9) return;
       const optionIndex = digit - 1;
       if (optionIndex >= activeQuestion.options.length) return;
