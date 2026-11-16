@@ -7,7 +7,6 @@ import { primaryServerKeybindingsAtom } from "../../state/server";
 import type { SidebarStatusFilter } from "../Sidebar.logic";
 import {
   Menu,
-  MenuItemDetail,
   MenuPopup,
   MenuRadioGroup,
   MenuRadioItem,
@@ -22,17 +21,44 @@ const FILTERS = [
   {
     value: "action",
     Icon: BellRingIcon,
-    name: "Attention needed",
+    name: "Attention",
     color: "text-amber-600 dark:text-amber-300/90",
   },
-  { value: "working", Icon: ZapIcon, name: "Working", color: "text-sky-600 dark:text-sky-300/90" },
   {
     value: "done",
     Icon: CircleCheckIcon,
     name: "Done",
     color: "text-emerald-600 dark:text-emerald-300/90",
   },
+  { value: "working", Icon: ZapIcon, name: "Working", color: "text-sky-600 dark:text-sky-300/90" },
 ] as const;
+
+type FilterEntry = (typeof FILTERS)[number];
+
+/** Icon with its count in the bottom-right corner; the stroke matches the surface behind it. */
+function CountedIcon(props: {
+  readonly entry: FilterEntry;
+  readonly count: number;
+  readonly strokeClassName: string;
+}) {
+  const color = props.entry.color || "text-sidebar-foreground";
+  return (
+    <span className="relative grid shrink-0 place-items-center">
+      <props.entry.Icon className={cn("size-4", color)} aria-hidden />
+      <span
+        aria-hidden
+        className={cn(
+          // Stays inside the icon button's padding, which clips anything past its edge.
+          "pointer-events-none absolute -right-1 -bottom-1 text-3xs leading-none font-bold tabular-nums [paint-order:stroke]",
+          props.strokeClassName,
+          color,
+        )}
+      >
+        {props.count > 99 ? "99+" : props.count}
+      </span>
+    </span>
+  );
+}
 
 const isStatusFilter = (value: unknown): value is SidebarStatusFilter =>
   FILTERS.some((entry) => entry.value === value);
@@ -54,18 +80,11 @@ export function SidebarStatusFilterMenu(props: {
           />
         }
       >
-        <span className="relative grid place-items-center">
-          <selected.Icon className={cn("size-4", selected.color)} />
-          <span
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute -right-2 -bottom-1.5 text-3xs leading-none font-bold tabular-nums [paint-order:stroke] [-webkit-text-stroke:2.5px_var(--sidebar)]",
-              selected.color || "text-sidebar-foreground",
-            )}
-          >
-            {props.counts[selected.value] > 99 ? "99+" : props.counts[selected.value]}
-          </span>
-        </span>
+        <CountedIcon
+          entry={selected}
+          count={props.counts[selected.value]}
+          strokeClassName="[-webkit-text-stroke:2.5px_var(--sidebar)]"
+        />
       </MenuTrigger>
       <MenuPopup align="start" className="min-w-52">
         <MenuRadioGroup
@@ -78,10 +97,13 @@ export function SidebarStatusFilterMenu(props: {
             const shortcut = shortcutLabelForCommand(keybindings, `sidebar.filter.${entry.value}`);
             return (
               <MenuRadioItem key={entry.value} value={entry.value} closeOnClick>
-                <span className="flex min-w-0 items-center gap-2">
-                  <entry.Icon className={cn("size-4", entry.color)} aria-hidden />
+                <span className="flex min-w-0 items-center gap-3">
+                  <CountedIcon
+                    entry={entry}
+                    count={props.counts[entry.value]}
+                    strokeClassName="[-webkit-text-stroke:2.5px_var(--popover)]"
+                  />
                   <span className="min-w-0 flex-1 truncate">{entry.name}</span>
-                  <MenuItemDetail>{props.counts[entry.value]}</MenuItemDetail>
                   {shortcut ? <MenuShortcut>{shortcut}</MenuShortcut> : null}
                 </span>
               </MenuRadioItem>

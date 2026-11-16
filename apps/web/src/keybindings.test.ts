@@ -236,8 +236,8 @@ describe("sidebar filter defaults", () => {
     for (const [digit, command] of [
       ["1", "sidebar.filter.all"],
       ["2", "sidebar.filter.action"],
-      ["3", "sidebar.filter.working"],
-      ["4", "sidebar.filter.done"],
+      ["3", "sidebar.filter.done"],
+      ["4", "sidebar.filter.working"],
     ] as const) {
       const chord = event({ key: digit, altKey: true, shiftKey: true });
       const resolve = (modelPickerOpen: boolean) =>
