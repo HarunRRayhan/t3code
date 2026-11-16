@@ -137,7 +137,7 @@ desktop app. Unknown keys evaluate to `false`.
 model picker is open. The thread jumps do not run while the model picker is open.
 `mod+9` always goes to the last thread. With more than nine threads, `mod+8`
 opens a thread picker you can search by title or project instead of jumping.
-In the grouped sidebar, each thread a jump reaches shows its number.
+In the grouped sidebar, each thread shows its position in the list. The number is not its shortcut.
 Those defaults use `isDesktop` so they do not steal the
 browser's tab-switch shortcuts. Remove that condition in Settings if you want
 the same jumps in a browser.

@@ -572,7 +572,7 @@ type SidebarThreadRowProps = {
   readOpensPullRequestsInRightPanel: () => boolean;
   jumpLabel: string | null;
   /** The ⌘N this thread answers to, shown as a small always-on tag in the row's left gutter. */
-  jumpNumber: number | null;
+  threadNumber: number | null;
   currentEnvironmentId: string | null;
   environmentLabel: string | null;
   environmentMachine: EnvironmentMachineKind;
@@ -1263,13 +1263,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           >
             {/* `contents` keeps one-line rows a single flex row. */}
             <div className={multiline ? "flex h-6 min-w-0 items-center gap-2.5" : "contents"}>
-              {inFolder && props.jumpNumber !== null ? (
+              {inFolder && props.threadNumber !== null ? (
                 <span
                   aria-hidden
-                  data-jump-number
+                  data-thread-number
                   className="pointer-events-none absolute start-4 top-1/2 inline-flex h-3.5 min-w-3.5 -translate-y-1/2 select-none items-center justify-center rounded bg-foreground/[0.07] font-medium text-3xs text-muted-foreground tabular-nums leading-none"
                 >
-                  {props.jumpNumber}
+                  {props.threadNumber}
                 </span>
               ) : null}
               {inFolder ? null : (

@@ -1452,18 +1452,14 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const settledThreadKeysRef = useRef(settledThreadKeys);
   const snoozedThreadKeysRef = useRef(snoozedThreadKeys);
 
-  const { jumpLabelByKey, jumpNumberByKey } = (() => {
-    const labels = new Map<string, string>();
-    const numbers = new Map<string, number>();
-    for (const [threadKey, jumpNumber] of threadJumpNumberByKey(orderedThreadKeys)) {
-      const jumpCommand = threadJumpCommandForIndex(jumpNumber - 1);
-      const label = jumpCommand ? shortcutLabelForCommand(keybindings, jumpCommand) : null;
-      if (!label) continue;
-      labels.set(threadKey, label);
-      numbers.set(threadKey, jumpNumber);
-    }
-    return { jumpLabelByKey: labels, jumpNumberByKey: numbers };
-  })();
+  const jumpLabelByKey = new Map<string, string>();
+  for (const [threadKey, jumpNumber] of threadJumpNumberByKey(orderedThreadKeys)) {
+    const jumpCommand = threadJumpCommandForIndex(jumpNumber - 1);
+    const label = jumpCommand ? shortcutLabelForCommand(keybindings, jumpCommand) : null;
+    if (label) jumpLabelByKey.set(threadKey, label);
+  }
+  // Row numbers are list positions; shortcuts only reach some of them.
+  const threadNumberByKey = new Map(orderedThreadKeys.map((key, index) => [key, index + 1]));
 
   const navigateToThread = (threadRef: ScopedThreadRef) => {
     if (useThreadSelectionStore.getState().selectedThreadKeys.size > 0) {
@@ -3460,7 +3456,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             jumpLabel={
                               showJumpHints ? (jumpLabelByKey.get(threadKey) ?? null) : null
                             }
-                            jumpNumber={jumpNumberByKey.get(threadKey) ?? null}
+                            threadNumber={threadNumberByKey.get(threadKey) ?? null}
                             currentEnvironmentId={primaryEnvironmentId}
                             environmentLabel={
                               environmentLabelById.get(thread.environmentId) ?? null
