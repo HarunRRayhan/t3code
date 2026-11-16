@@ -1544,7 +1544,8 @@ export function isThreadActionNeeded(
 }
 
 type SidebarStatusGroupInput = Parameters<typeof isThreadActionNeeded>[0] &
-  Parameters<typeof resolveSidebarThreadStatus>[0];
+  Parameters<typeof resolveSidebarThreadStatus>[0] &
+  Pick<SidebarThreadSummary, "pendingBackgroundTasks">;
 
 const WORKING_ROW_STATUSES: ReadonlySet<SidebarThreadStatus> = new Set([
   "preparing",
@@ -1552,10 +1553,13 @@ const WORKING_ROW_STATUSES: ReadonlySet<SidebarThreadStatus> = new Set([
   "waiting",
 ]);
 
-/** Working matches the rows that read Preparing, Working, or Waiting. */
+/** Working matches the rows that read Connecting, Working, or Waiting, including awaited background work. */
 export function resolveSidebarStatusGroup(thread: SidebarStatusGroupInput): SidebarStatusGroup {
   if (isThreadActionNeeded(thread)) return "action";
-  return WORKING_ROW_STATUSES.has(resolveSidebarThreadStatus(thread)) ? "working" : "done";
+  return WORKING_ROW_STATUSES.has(resolveSidebarThreadStatus(thread)) ||
+    backgroundWorkHoldsCompletion(thread.pendingBackgroundTasks ?? [])
+    ? "working"
+    : "done";
 }
 
 export function matchesSidebarStatusFilter(

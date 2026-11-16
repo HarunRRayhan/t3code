@@ -1766,6 +1766,7 @@ describe("matchesSidebarStatusFilter", () => {
     interactionMode: "default",
     hasActionableProposedPlan: true,
     runtime: null,
+    pendingBackgroundTasks: [],
   } as const;
   const runtime = (status: "preparing" | "queued" | "running" | "waiting" | "idle") => ({
     status,
@@ -1797,6 +1798,26 @@ describe("matchesSidebarStatusFilter", () => {
       "working",
     ],
     ["no runtime, plan outside plan mode", idle, "done"],
+    [
+      "turn ended, awaited background work (row reads Waiting)",
+      {
+        ...idle,
+        pendingBackgroundTasks: [
+          { taskId: "bg-1", description: "Watch build", kind: "monitor", awaited: true },
+        ],
+      },
+      "working",
+    ],
+    [
+      "turn ended, unawaited dev server",
+      {
+        ...idle,
+        pendingBackgroundTasks: [
+          { taskId: "bg-2", description: "Dev server", kind: "command" },
+        ],
+      },
+      "done",
+    ],
   ] as const)("%s is %s", (_name, thread, group) => {
     expect(matchesSidebarStatusFilter("all", thread)).toBe(true);
     for (const filter of ["action", "working", "done"] as const) {
