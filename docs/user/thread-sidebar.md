@@ -225,7 +225,7 @@ The linked pull request participates in automatic settlement.
 
 ## Find and reference work
 
-The status button beside the sidebar search narrows the list to threads that need your
+The status button at the bottom of the sidebar, left of the update button, narrows the list to threads that need your
 attention, are done, or are working (every row that reads Connecting, Working, or Waiting). The
 number on each icon counts its threads. `Alt+Shift+1` through `Alt+Shift+4` pick All, Attention,
 Done, and Working.

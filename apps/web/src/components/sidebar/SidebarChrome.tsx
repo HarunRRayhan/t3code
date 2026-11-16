@@ -218,7 +218,11 @@ function SidebarUtilityItem({
   );
 }
 
-const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
+const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
+  statusFilter,
+}: {
+  statusFilter: ReactNode;
+}) {
   const navigate = useNavigate();
   const navigateToMainApp = useNavigateToMainApp();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -286,17 +290,22 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         </>
       )}
       <SidebarThreadUndoNotice />
+      {isOnUtilityPage ? null : statusFilter}
       <SidebarUpdatePill />
     </SidebarMenu>
   );
 });
 
-export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
+export const SidebarChromeFooter = memo(function SidebarChromeFooter({
+  statusFilter,
+}: {
+  statusFilter: ReactNode;
+}) {
   return (
     <SidebarFooter>
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
-      <SidebarUtilityMenu />
+      <SidebarUtilityMenu statusFilter={statusFilter} />
     </SidebarFooter>
   );
 });

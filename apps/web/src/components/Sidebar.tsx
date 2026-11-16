@@ -2996,7 +2996,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           <SidebarGroup className="z-[1]">
             <SidebarThreadHeader
               hasProjects={projectGroups.length > 0}
-              statusFilter={<SidebarStatusFilterMenu counts={statusCounts} />}
               projectScope={
                 <Combobox
                   items={projectScopeItems}
@@ -3689,7 +3688,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           ) : null}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarChromeFooter />
+      <SidebarChromeFooter statusFilter={<SidebarStatusFilterMenu counts={statusCounts} />} />
     </SidebarFolderDrop>
   );
 }
