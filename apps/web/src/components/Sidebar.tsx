@@ -216,7 +216,7 @@ import {
   type SidebarStatusFilter,
 } from "./Sidebar.logic";
 import { useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
-import { SidebarStatusFilterMenu } from "./sidebar/SidebarStatusFilterMenu";
+import { SidebarStatusFilterIcons } from "./sidebar/SidebarStatusFilterIcons";
 import {
   createSidebarCollisionDetection,
   createSidebarSortingStrategy,
@@ -3688,7 +3688,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           ) : null}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarChromeFooter statusFilter={<SidebarStatusFilterMenu counts={statusCounts} />} />
+      <SidebarChromeFooter statusFilter={<SidebarStatusFilterIcons counts={statusCounts} />} />
     </SidebarFolderDrop>
   );
 }
