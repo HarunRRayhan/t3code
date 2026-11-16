@@ -1,4 +1,4 @@
-import { BellRingIcon, CircleCheckIcon, ZapIcon } from "lucide-react";
+import { BellRingIcon, CircleCheckIcon, ListIcon, ZapIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import type { SidebarStatusFilter } from "../Sidebar.logic";
@@ -6,6 +6,7 @@ import { Toggle } from "../ui/toggle";
 import { useSidebarStatusFilter } from "./sidebarStatusFilter";
 
 const FILTERS = [
+  { value: "all", Icon: ListIcon, name: "All", color: "text-sidebar-foreground" },
   {
     value: "action",
     Icon: BellRingIcon,
@@ -21,7 +22,7 @@ const FILTERS = [
   { value: "working", Icon: ZapIcon, name: "Working", color: "text-sky-600 dark:text-sky-300/90" },
 ] as const;
 
-/** Three toggles; pressing the selected one again shows every thread. */
+/** One toggle per filter option. */
 export function SidebarStatusFilterIcons(props: {
   readonly counts: Readonly<Record<SidebarStatusFilter, number>>;
 }) {
@@ -38,7 +39,7 @@ export function SidebarStatusFilterIcons(props: {
             size="xs"
             variant="ghost"
             pressed={selected}
-            onPressedChange={() => setFilter(selected ? "all" : entry.value)}
+            onPressedChange={() => setFilter(entry.value)}
             aria-label={`${entry.name}: ${count}`}
             title={entry.name}
           >

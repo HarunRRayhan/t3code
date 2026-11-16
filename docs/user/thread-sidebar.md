@@ -225,9 +225,9 @@ The linked pull request participates in automatic settlement.
 
 ## Find and reference work
 
-The three status icons at the bottom of the sidebar, left of the update button, narrow the list to threads that need your
+The four status icons at the bottom of the sidebar, left of the update button, show all threads or narrow the list to those that need your
 attention, are done, or are working (every row that reads Connecting, Working, or Waiting). The
-number on each icon counts its threads. Press the selected icon again to show everything.
+number on each icon counts its threads.
 `Alt+Shift+1` through `Alt+Shift+4` pick All, Attention, Done, and Working.
 Settled threads stay listed whatever you pick.
 
