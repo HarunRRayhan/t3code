@@ -319,7 +319,6 @@ const SIDEBAR_FILTER_COMMANDS: Partial<Record<string, SidebarStatusFilter>> = {
   "sidebar.filter.all": "all",
   "sidebar.filter.action": "action",
   "sidebar.filter.working": "working",
-  "sidebar.filter.waiting": "waiting",
   "sidebar.filter.done": "done",
 };
 

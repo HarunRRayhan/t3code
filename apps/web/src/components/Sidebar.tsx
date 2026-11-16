@@ -641,7 +641,6 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
     all: unsettled.length,
     action: 0,
     working: 0,
-    waiting: 0,
     done: 0,
   };
   for (const thread of unsettled) statusCounts[resolveSidebarStatusGroup(thread)] += 1;

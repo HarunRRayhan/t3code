@@ -226,8 +226,9 @@ The linked pull request participates in automatic settlement.
 ## Find and reference work
 
 The status button beside the sidebar search narrows the list to threads that need your
-attention, are working, are waiting (queued, or paused on background work or a sub-agent), or are
-done. `Alt+Shift+1` through `Alt+Shift+5` pick All, Attention needed, Working, Waiting, and Done.
+attention, are working (including queued turns and turns paused on background work or a
+sub-agent), or are done. `Alt+Shift+1` through `Alt+Shift+4` pick All, Attention needed, Working,
+and Done.
 Settled threads stay listed whatever you pick.
 
 On web and desktop, open the command palette with `Cmd/Ctrl+K` to search threads

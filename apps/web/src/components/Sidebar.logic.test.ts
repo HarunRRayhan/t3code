@@ -1788,18 +1788,13 @@ describe("matchesSidebarStatusFilter", () => {
     ],
     ["preparing", { ...idle, runtime: runtime("preparing") }, "working"],
     ["running", { ...idle, runtime: runtime("running") }, "working"],
-    ["queued", { ...idle, runtime: runtime("queued") }, "waiting"],
-    ["run waiting", { ...idle, runtime: runtime("waiting") }, "waiting"],
-    [
-      "blocked on a child thread",
-      { ...idle, runtime: runtime("running"), blockedOnThreadWait: true },
-      "waiting",
-    ],
+    ["queued", { ...idle, runtime: runtime("queued") }, "working"],
+    ["run waiting", { ...idle, runtime: runtime("waiting") }, "working"],
     ["idle session", { ...idle, runtime: runtime("idle") }, "done"],
     ["no runtime, plan outside plan mode", idle, "done"],
   ] as const)("%s is %s", (_name, thread, group) => {
     expect(matchesSidebarStatusFilter("all", thread)).toBe(true);
-    for (const filter of ["action", "working", "waiting", "done"] as const) {
+    for (const filter of ["action", "working", "done"] as const) {
       expect(matchesSidebarStatusFilter(filter, thread)).toBe(filter === group);
     }
   });

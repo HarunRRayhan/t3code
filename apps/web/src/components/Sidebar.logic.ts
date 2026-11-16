@@ -1518,7 +1518,7 @@ export function sortScopedProjectsForSidebar<
   );
 }
 
-export const SIDEBAR_STATUS_GROUPS = ["action", "working", "waiting", "done"] as const;
+export const SIDEBAR_STATUS_GROUPS = ["action", "working", "done"] as const;
 export type SidebarStatusGroup = (typeof SIDEBAR_STATUS_GROUPS)[number];
 export type SidebarStatusFilter = "all" | SidebarStatusGroup;
 
@@ -1544,21 +1544,19 @@ export function isThreadActionNeeded(
 }
 
 type SidebarStatusGroupInput = Parameters<typeof isThreadActionNeeded>[0] &
-  Pick<SidebarThreadSummary, "runtime" | "blockedOnThreadWait">;
+  Pick<SidebarThreadSummary, "runtime">;
 
-/** Waiting: queued, or paused on background work or a child thread. Done: nothing running. */
+/** Working includes queued turns and turns paused on background work or a child thread. */
 export function resolveSidebarStatusGroup(thread: SidebarStatusGroupInput): SidebarStatusGroup {
   if (isThreadActionNeeded(thread)) return "action";
   const status = thread.runtime?.status;
-  if (
+  return status === "preparing" ||
     status === "queued" ||
-    status === "waiting" ||
-    (status === "running" && thread.blockedOnThreadWait === true)
-  ) {
-    return "waiting";
-  }
-  if (status === "preparing" || status === "starting" || status === "running") return "working";
-  return "done";
+    status === "starting" ||
+    status === "running" ||
+    status === "waiting"
+    ? "working"
+    : "done";
 }
 
 export function matchesSidebarStatusFilter(

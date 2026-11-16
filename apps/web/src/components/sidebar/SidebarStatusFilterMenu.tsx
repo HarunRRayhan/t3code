@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import { BellRingIcon, CircleCheckIcon, HourglassIcon, ListIcon, ZapIcon } from "lucide-react";
+import { BellRingIcon, CircleCheckIcon, ListIcon, ZapIcon } from "lucide-react";
 
 import { shortcutLabelForCommand } from "../../keybindings";
 import { cn } from "../../lib/utils";
@@ -26,12 +26,6 @@ const FILTERS = [
     color: "text-amber-600 dark:text-amber-300/90",
   },
   { value: "working", Icon: ZapIcon, name: "Working", color: "text-sky-600 dark:text-sky-300/90" },
-  {
-    value: "waiting",
-    Icon: HourglassIcon,
-    name: "Waiting",
-    color: "text-violet-600 dark:text-violet-300/90",
-  },
   {
     value: "done",
     Icon: CircleCheckIcon,

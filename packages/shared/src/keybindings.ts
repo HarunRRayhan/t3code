@@ -70,11 +70,6 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   },
   {
     key: "alt+shift+4",
-    command: "sidebar.filter.waiting",
-    when: "!terminalFocus && !modelPickerOpen",
-  },
-  {
-    key: "alt+shift+5",
     command: "sidebar.filter.done",
     when: "!terminalFocus && !modelPickerOpen",
   },

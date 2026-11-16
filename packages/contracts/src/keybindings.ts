@@ -64,7 +64,6 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "sidebar.filter.all",
   "sidebar.filter.action",
   "sidebar.filter.working",
-  "sidebar.filter.waiting",
   "sidebar.filter.done",
   "navigation.back",
   "navigation.forward",
