@@ -358,9 +358,11 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
       }
       const command = resolveShortcutCommand(event, keybindings, {
         context: {
-          usagePageOpen,
           terminalFocus: isTerminalFocused(),
+          previewFocus: isPreviewFocused(),
           modelPickerOpen: isModelPickerOpen(),
+          ...readRoutePanelsOpen(router),
+          usagePageOpen,
         },
       });
       const filter = SIDEBAR_FILTER_COMMANDS[command ?? ""];
@@ -380,7 +382,7 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
       window.removeEventListener("keydown", onKeyDown, true);
       unsubscribe?.();
     };
-  }, [keybindings, showSidebar, toggleSidebar, setStatusFilter, usagePageOpen]);
+  }, [keybindings, router, showSidebar, toggleSidebar, setStatusFilter, usagePageOpen]);
 
   // The control lives as long as the shell, so it carries the shell's commands. Created
   // once so re-renders never re-register them.
