@@ -1544,19 +1544,18 @@ export function isThreadActionNeeded(
 }
 
 type SidebarStatusGroupInput = Parameters<typeof isThreadActionNeeded>[0] &
-  Pick<SidebarThreadSummary, "runtime">;
+  Parameters<typeof resolveSidebarThreadStatus>[0];
 
-/** Working includes queued turns and turns paused on background work or a child thread. */
+const WORKING_ROW_STATUSES: ReadonlySet<SidebarThreadStatus> = new Set([
+  "preparing",
+  "working",
+  "waiting",
+]);
+
+/** Working matches the rows that read Preparing, Working, or Waiting. */
 export function resolveSidebarStatusGroup(thread: SidebarStatusGroupInput): SidebarStatusGroup {
   if (isThreadActionNeeded(thread)) return "action";
-  const status = thread.runtime?.status;
-  return status === "preparing" ||
-    status === "queued" ||
-    status === "starting" ||
-    status === "running" ||
-    status === "waiting"
-    ? "working"
-    : "done";
+  return WORKING_ROW_STATUSES.has(resolveSidebarThreadStatus(thread)) ? "working" : "done";
 }
 
 export function matchesSidebarStatusFilter(

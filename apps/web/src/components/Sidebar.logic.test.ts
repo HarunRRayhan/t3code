@@ -1790,7 +1790,12 @@ describe("matchesSidebarStatusFilter", () => {
     ["running", { ...idle, runtime: runtime("running") }, "working"],
     ["queued", { ...idle, runtime: runtime("queued") }, "working"],
     ["run waiting", { ...idle, runtime: runtime("waiting") }, "working"],
-    ["idle session", { ...idle, runtime: runtime("idle") }, "done"],
+    ["idle session (row reads Waiting)", { ...idle, runtime: runtime("idle") }, "working"],
+    [
+      "blocked on a child thread",
+      { ...idle, runtime: runtime("running"), blockedOnThreadWait: true },
+      "working",
+    ],
     ["no runtime, plan outside plan mode", idle, "done"],
   ] as const)("%s is %s", (_name, thread, group) => {
     expect(matchesSidebarStatusFilter("all", thread)).toBe(true);

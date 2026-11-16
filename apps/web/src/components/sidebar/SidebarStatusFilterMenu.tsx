@@ -54,7 +54,18 @@ export function SidebarStatusFilterMenu(props: {
           />
         }
       >
-        <selected.Icon className={cn("size-4", selected.color)} />
+        <span className="relative grid place-items-center">
+          <selected.Icon className={cn("size-4", selected.color)} />
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute -right-2 -bottom-1.5 text-3xs leading-none font-bold tabular-nums [paint-order:stroke] [-webkit-text-stroke:2.5px_var(--sidebar)]",
+              selected.color || "text-sidebar-foreground",
+            )}
+          >
+            {props.counts[selected.value] > 99 ? "99+" : props.counts[selected.value]}
+          </span>
+        </span>
       </MenuTrigger>
       <MenuPopup align="start" className="min-w-52">
         <MenuRadioGroup
