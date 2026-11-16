@@ -1765,17 +1765,42 @@ describe("matchesSidebarStatusFilter", () => {
     pendingGuestMessageCount: 0,
     interactionMode: "default",
     hasActionableProposedPlan: true,
+    runtime: null,
   } as const;
+  const runtime = (status: "preparing" | "queued" | "running" | "waiting" | "idle") => ({
+    status,
+    activeRunId: null,
+    providerInstanceId: ProviderInstanceId.make("codex"),
+    providerName: "Codex",
+    lastError: null,
+    updatedAt: "2026-03-09T10:00:00.000Z",
+  });
 
   it.each([
-    ["approval", { ...idle, hasPendingApprovals: true }, true],
-    ["question", { ...idle, hasPendingUserInput: true }, true],
-    ["sub-agent request", { ...idle, pendingSubagentRequest: "approval" }, true],
-    ["plan to accept", { ...idle, interactionMode: "plan" }, true],
-    ["plan proposed outside plan mode", idle, false],
-  ] as const)("splits action-needed from others: %s", (_name, thread, actionNeeded) => {
+    ["approval", { ...idle, hasPendingApprovals: true }, "action"],
+    ["question", { ...idle, hasPendingUserInput: true }, "action"],
+    ["sub-agent request", { ...idle, pendingSubagentRequest: "approval" }, "action"],
+    ["plan to accept", { ...idle, interactionMode: "plan" }, "action"],
+    [
+      "running approval",
+      { ...idle, hasPendingApprovals: true, runtime: runtime("running") },
+      "action",
+    ],
+    ["preparing", { ...idle, runtime: runtime("preparing") }, "working"],
+    ["running", { ...idle, runtime: runtime("running") }, "working"],
+    ["queued", { ...idle, runtime: runtime("queued") }, "waiting"],
+    ["run waiting", { ...idle, runtime: runtime("waiting") }, "waiting"],
+    [
+      "blocked on a child thread",
+      { ...idle, runtime: runtime("running"), blockedOnThreadWait: true },
+      "waiting",
+    ],
+    ["idle session", { ...idle, runtime: runtime("idle") }, "done"],
+    ["no runtime, plan outside plan mode", idle, "done"],
+  ] as const)("%s is %s", (_name, thread, group) => {
     expect(matchesSidebarStatusFilter("all", thread)).toBe(true);
-    expect(matchesSidebarStatusFilter("action", thread)).toBe(actionNeeded);
-    expect(matchesSidebarStatusFilter("others", thread)).toBe(!actionNeeded);
+    for (const filter of ["action", "working", "waiting", "done"] as const) {
+      expect(matchesSidebarStatusFilter(filter, thread)).toBe(filter === group);
+    }
   });
 });

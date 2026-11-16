@@ -211,11 +211,12 @@ import {
   type SidebarListItem,
   type SidebarSection,
   resolveSidebarRowThreadId,
-  isThreadActionNeeded,
+  resolveSidebarStatusGroup,
   matchesSidebarStatusFilter,
   type SidebarStatusFilter,
 } from "./Sidebar.logic";
-import { publishSidebarStatusCounts, useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
+import { useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
+import { SidebarStatusFilterMenu } from "./sidebar/SidebarStatusFilterMenu";
 import {
   createSidebarCollisionDetection,
   createSidebarSortingStrategy,
@@ -501,11 +502,6 @@ function useSidebarThreads(input: {
 
   const { pinnedThreads, activeThreads, workingThreads, snoozedThreads, settledThreads } =
     partition;
-  const { all: allCount, action: actionCount, others: othersCount } = partition.statusCounts;
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- publishes the list's counts to the footer, a separate tree with no access to this scope
-  useEffect(() => {
-    publishSidebarStatusCounts({ all: allCount, action: actionCount, others: othersCount });
-  }, [allCount, actionCount, othersCount]);
   // Older settled threads load in pages; the shelf lists them only as far as they are loaded.
   const olderSettledShelf = useOlderSettledShelf({
     scopes: olderSettledScopes([...serverConfigs.keys()], scopedProjectKeys),
@@ -641,8 +637,14 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
   // Settled threads stay listed: the filter narrows the active list, not the shelf of finished work.
   const listable = filterSidebarV2VisibleThreads(threads, scopedProjectKeys, delegatedUnderParent);
   const unsettled = listable.filter((thread) => thread.settledOverride !== "settled");
-  const action = unsettled.filter(isThreadActionNeeded).length;
-  const statusCounts = { all: unsettled.length, action, others: unsettled.length - action };
+  const statusCounts: Record<SidebarStatusFilter, number> = {
+    all: unsettled.length,
+    action: 0,
+    working: 0,
+    waiting: 0,
+    done: 0,
+  };
+  for (const thread of unsettled) statusCounts[resolveSidebarStatusGroup(thread)] += 1;
   const visible = listable.filter(
     (thread) =>
       thread.settledOverride === "settled" ||
@@ -1354,6 +1356,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     activeKeys,
     pinnedKeysById,
     activeKeysById,
+    statusCounts,
   } = useSidebarThreads({
     projectScopeKey,
     scopedProjectKeys,
@@ -2994,6 +2997,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           <SidebarGroup className="z-[1]">
             <SidebarThreadHeader
               hasProjects={projectGroups.length > 0}
+              statusFilter={<SidebarStatusFilterMenu counts={statusCounts} />}
               projectScope={
                 <Combobox
                   items={projectScopeItems}

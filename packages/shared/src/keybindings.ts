@@ -65,7 +65,17 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   },
   {
     key: "alt+shift+3",
-    command: "sidebar.filter.others",
+    command: "sidebar.filter.working",
+    when: "!terminalFocus && !modelPickerOpen",
+  },
+  {
+    key: "alt+shift+4",
+    command: "sidebar.filter.waiting",
+    when: "!terminalFocus && !modelPickerOpen",
+  },
+  {
+    key: "alt+shift+5",
+    command: "sidebar.filter.done",
     when: "!terminalFocus && !modelPickerOpen",
   },
   { key: "f6", command: "workspace.focusNext" },

@@ -377,8 +377,10 @@ export function commandLabel(command: KeybindingCommand): string {
   if (command === "approval.accept") return "Approval: Approve First Request";
   if (command === "approval.decline") return "Approval: Decline First Request";
   if (command === "sidebar.filter.all") return "Sidebar: Show All Threads";
-  if (command === "sidebar.filter.action") return "Sidebar: Show Threads Needing Action";
-  if (command === "sidebar.filter.others") return "Sidebar: Show Other Threads";
+  if (command === "sidebar.filter.action") return "Sidebar: Show Threads Needing Attention";
+  if (command === "sidebar.filter.working") return "Sidebar: Show Working Threads";
+  if (command === "sidebar.filter.waiting") return "Sidebar: Show Waiting Threads";
+  if (command === "sidebar.filter.done") return "Sidebar: Show Done Threads";
   if (command === "composer.dictation") return "Composer: Start or Finish Dictation";
   if (command === "thread.steerQueuedMessage") return "Queue: Send First Queued Message";
   if (command === "thread.editQueuedMessage") return "Queue: Edit Last Queued Message";

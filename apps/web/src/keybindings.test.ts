@@ -232,11 +232,13 @@ describe("thread archive and delete defaults", () => {
 });
 
 describe("sidebar filter defaults", () => {
-  it("bind alt+shift+1..3 and step aside while the model picker is open", () => {
+  it("bind alt+shift+1..5 and step aside while the model picker is open", () => {
     for (const [digit, command] of [
       ["1", "sidebar.filter.all"],
       ["2", "sidebar.filter.action"],
-      ["3", "sidebar.filter.others"],
+      ["3", "sidebar.filter.working"],
+      ["4", "sidebar.filter.waiting"],
+      ["5", "sidebar.filter.done"],
     ] as const) {
       const chord = event({ key: digit, altKey: true, shiftKey: true });
       const resolve = (modelPickerOpen: boolean) =>

@@ -318,7 +318,9 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
 const SIDEBAR_FILTER_COMMANDS: Partial<Record<string, SidebarStatusFilter>> = {
   "sidebar.filter.all": "all",
   "sidebar.filter.action": "action",
-  "sidebar.filter.others": "others",
+  "sidebar.filter.working": "working",
+  "sidebar.filter.waiting": "waiting",
+  "sidebar.filter.done": "done",
 };
 
 function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
