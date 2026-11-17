@@ -8,7 +8,7 @@ export interface CommandPaletteLinkedThreads {
 }
 
 export interface CommandPaletteOpenDetail {
-  readonly open?: "add-project" | "new-thread-in";
+  readonly open?: "add-project" | "new-thread-in" | "threads";
   readonly query?: string;
   readonly linkedThreads?: CommandPaletteLinkedThreads;
 }
@@ -21,6 +21,8 @@ export function openCommandPalette(detail: CommandPaletteOpenDetail = {}): void 
     dispatchCommandPalette({ _tag: "OpenNewThreadIn" });
   } else if (detail.open === "add-project") {
     dispatchCommandPalette({ _tag: "OpenAddProject" });
+  } else if (detail.open === "threads") {
+    dispatchCommandPalette({ _tag: "OpenThreads" });
   } else if (detail.query !== undefined) {
     dispatchCommandPalette({
       _tag: "OpenSearch",

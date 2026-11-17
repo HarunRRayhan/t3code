@@ -56,6 +56,20 @@ it.each<{ focus: string; control: ReactNode; toggles: boolean }>([
     toggles: false,
   },
   {
+    focus: "an empty composer",
+    control: <div contentEditable data-testid="composer-editor" aria-label="Focused" />,
+    toggles: true,
+  },
+  {
+    focus: "a composer with text",
+    control: (
+      <div contentEditable data-testid="composer-editor" aria-label="Focused">
+        draft
+      </div>
+    ),
+    toggles: false,
+  },
+  {
     focus: "a select",
     control: (
       <select aria-label="Focused">
@@ -99,5 +113,56 @@ it.each<{ focus: string; control: ReactNode; toggles: boolean }>([
     await userEvent.keyboard("1");
 
     expect(onToggleOption.mock.calls).toEqual(toggles ? [["question", "Incremental"]] : []);
+  },
+);
+
+it.each<{ multiSelect: boolean; keys: string; toggled: string[] }>([
+  { multiSelect: false, keys: "{Alt>}2{/Alt}", toggled: ["Big bang"] },
+  { multiSelect: false, keys: "{ArrowDown}{ArrowDown}{Enter}", toggled: ["Big bang"] },
+  { multiSelect: true, keys: "{ArrowUp}{ }{Enter}", toggled: ["Big bang"] },
+  { multiSelect: true, keys: "{ArrowDown}{ArrowDown}{ArrowDown}{ }", toggled: ["Incremental"] },
+])(
+  "keys in the composer pick options (multiSelect: $multiSelect, $keys)",
+  async ({ multiSelect, keys, toggled }) => {
+    const onToggleOption = vi.fn();
+    const question = prompt.questions[0]!;
+    await using screen = await render(
+      <>
+        <div contentEditable data-testid="composer-editor" aria-label="Composer">
+          {keys.startsWith("{Alt>}") ? "draft" : null}
+        </div>
+        <ComposerPendingUserInputPanel
+          pendingUserInputs={[
+            {
+              ...prompt,
+              questions: [
+                {
+                  ...question,
+                  multiSelect,
+                  options: [...question.options, { label: "Big bang", description: "All at once" }],
+                },
+              ],
+            },
+          ]}
+          cwd={undefined}
+          threadRef={threadRef}
+          respondingRequestIds={[]}
+          answers={{}}
+          questionIndex={0}
+          onToggleOption={onToggleOption}
+          onAdvance={vi.fn()}
+          onDismiss={vi.fn()}
+        />
+      </>,
+    );
+    await expect.element(screen.getByText("Big bang")).toBeVisible();
+    screen.getByLabelText("Composer").element().focus();
+
+    await userEvent.keyboard(keys);
+
+    expect(onToggleOption.mock.calls).toEqual(toggled.map((label) => ["question", label]));
+    expect(screen.getByLabelText("Composer").element().textContent).toBe(
+      keys.startsWith("{Alt>}") ? "draft" : "",
+    );
   },
 );

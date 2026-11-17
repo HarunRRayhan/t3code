@@ -133,8 +133,11 @@ In a thread, `rightPanelOpen` is true while its right panel is open; the default
 the keyboard. `isWeb` is true in a browser tab. `isDesktop` is true in the
 desktop app. Unknown keys evaluate to `false`.
 
-`mod+1` through `mod+9` jump to the first nine threads, and to models while the
+`mod+1` through `mod+9` jump to threads in sidebar order, and to models while the
 model picker is open. The thread jumps do not run while the model picker is open.
+`mod+9` always goes to the last thread. With more than nine threads, `mod+8`
+opens a thread picker you can search by title or project instead of jumping.
+In the grouped sidebar, each thread shows its position in the list. The number is not its shortcut.
 Those defaults use `isDesktop` so they do not steal the
 browser's tab-switch shortcuts. Remove that condition in Settings if you want
 the same jumps in a browser.

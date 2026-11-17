@@ -203,6 +203,54 @@ const DEFAULT_BINDINGS = compile([
   },
 ]);
 
+describe("thread archive and delete defaults", () => {
+  it("bind their own chords, which no other default uses", () => {
+    for (const [command, chord, key, altKey] of [
+      ["thread.archive", event({ key: "w", metaKey: true, shiftKey: true }), "w", false],
+      [
+        "thread.delete",
+        event({ key: "Backspace", metaKey: true, altKey: true, shiftKey: true }),
+        "backspace",
+        true,
+      ],
+    ] as const) {
+      assert.strictEqual(
+        resolveShortcutCommand(chord, DEFAULT_RESOLVED_KEYBINDINGS, { platform: "MacIntel" }),
+        command,
+      );
+      assert.deepStrictEqual(
+        DEFAULT_RESOLVED_KEYBINDINGS.filter(
+          (binding) =>
+            binding.shortcut.key === key &&
+            binding.shortcut.shiftKey &&
+            binding.shortcut.altKey === altKey,
+        ).map((binding) => binding.command),
+        [command],
+      );
+    }
+  });
+});
+
+describe("sidebar filter defaults", () => {
+  it("bind alt+shift+1..4 and step aside while the model picker is open", () => {
+    for (const [digit, command] of [
+      ["1", "sidebar.filter.all"],
+      ["2", "sidebar.filter.action"],
+      ["3", "sidebar.filter.done"],
+      ["4", "sidebar.filter.working"],
+    ] as const) {
+      const chord = event({ key: digit, altKey: true, shiftKey: true });
+      const resolve = (modelPickerOpen: boolean) =>
+        resolveShortcutCommand(chord, DEFAULT_RESOLVED_KEYBINDINGS, {
+          platform: "MacIntel",
+          context: { modelPickerOpen },
+        });
+      assert.strictEqual(resolve(false), command);
+      assert.strictEqual(resolve(true), null);
+    }
+  });
+});
+
 describe("effectiveShortcutsForCommand", () => {
   it("passes only effective preview shortcuts to the desktop bridge", () => {
     const reopen = modShortcut("t", { shiftKey: true });
@@ -898,6 +946,24 @@ describe("composer and pull request shortcuts", () => {
       }
     },
   );
+
+  it("lets a pending approval take mod+enter from the composer", () => {
+    const context = { composerFocus: true, turnRunning: true };
+    for (const [approvalPending, key, command] of [
+      [true, "Enter", "approval.accept"],
+      [true, "Backspace", "approval.decline"],
+      [false, "Enter", "composer.sendAlternate"],
+      [false, "Backspace", null],
+    ] as const) {
+      assert.strictEqual(
+        resolveShortcutCommand(event({ key, metaKey: true }), DEFAULT_RESOLVED_KEYBINDINGS, {
+          platform: "MacIntel",
+          context: { ...context, approvalPending },
+        }),
+        command,
+      );
+    }
+  });
 
   const altEffortBindings = compileResolvedKeybindingsConfig([
     { key: "mod+alt+e", command: "composer.effort", when: "!terminalFocus" },

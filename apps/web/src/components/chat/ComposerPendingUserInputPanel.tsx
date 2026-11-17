@@ -93,6 +93,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
     optionValue: string;
   } | null>(null);
   const [collapsedQuestionId, setCollapsedQuestionId] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<{ questionId: string; index: number } | null>(null);
   // Keep question identity stable for its shortcut listener.
   const progress = derivePendingUserInputProgress(prompt.questions, answers, questionIndex);
   const activeQuestion = progress.activeQuestion;
@@ -102,6 +103,8 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
     (option) =>
       !customAnswerActive && progress.selectedOptionValues.includes(option.value ?? option.label),
   );
+  const highlightedIndex =
+    highlight && highlight.questionId === activeQuestion?.id ? highlight.index : -1;
   const isCollapsed = collapsedQuestionId !== null && collapsedQuestionId === activeQuestion?.id;
 
   if (
@@ -145,19 +148,44 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   };
 
   const selectOptionFromShortcut = useEffectEvent(handleOptionSelection);
+  const navigateFromShortcut = useEffectEvent((key: string): boolean => {
+    const count = activeQuestion?.options.length ?? 0;
+    if (!activeQuestion || count === 0) return false;
+    if (key === "ArrowDown" || key === "ArrowUp") {
+      const step = key === "ArrowDown" ? 1 : -1;
+      const from = highlightedIndex === -1 ? (step === 1 ? -1 : count) : highlightedIndex;
+      setHighlight({ questionId: activeQuestion.id, index: (from + step + count) % count });
+      return true;
+    }
+    const option = activeQuestion.options[highlightedIndex];
+    // Multi-select leaves Enter to the composer, which submits the toggled answers.
+    if (!option || !(key === " " || (key === "Enter" && !activeQuestion.multiSelect))) {
+      return false;
+    }
+    handleOptionSelection(activeQuestion.id, option.value ?? option.label);
+    return true;
+  });
   const backgroundThread = use(BackgroundThreadContext);
 
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes a document keydown listener for digit shortcuts while a question is answerable
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes a document keydown listener for digit and arrow shortcuts while a question is answerable
   useEffect(() => {
     if (!activeQuestion || responseDisabled || isCollapsed || backgroundThread) return;
     const handler = (event: globalThis.KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.isComposing) return;
+      // Option+digit picks even over typed text; event.code because macOS Option remaps event.key.
+      const altDigit = event.altKey && !event.shiftKey && /^Digit[1-9]$/.test(event.code);
+      if (event.altKey && !altDigit) return;
       const target = event.target;
       if (isInSideChatPane(target)) return;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
         return;
       }
+      // An empty composer takes shortcut keys as option picks; once the user types, they are text.
+      const composer =
+        target instanceof HTMLElement ? target.closest('[data-testid="composer-editor"]') : null;
+      if (composer && !altDigit && composer.textContent?.trim()) return;
       if (
+        !composer &&
         target instanceof HTMLElement &&
         target.closest(
           'select, [contenteditable]:not([contenteditable="false"]), [role="dialog"], [aria-modal="true"], [role="menu"], [role="combobox"], [data-slot$="popup"]',
@@ -165,7 +193,14 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       ) {
         return;
       }
-      const digit = Number.parseInt(event.key, 10);
+      if ((composer || target === document.body) && !event.shiftKey && !event.altKey) {
+        if (navigateFromShortcut(event.key)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+      }
+      const digit = Number.parseInt(altDigit ? event.code.slice(5) : event.key, 10);
       if (Number.isNaN(digit) || digit < 1 || digit > 9) return;
       const optionIndex = digit - 1;
       if (optionIndex >= activeQuestion.options.length) return;
@@ -174,8 +209,9 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       event.preventDefault();
       selectOptionFromShortcut(activeQuestion.id, option.value ?? option.label);
     };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
+    // Capture runs before the composer editor, which would otherwise take Enter as submit.
+    document.addEventListener("keydown", handler, true);
+    return () => document.removeEventListener("keydown", handler, true);
   }, [activeQuestion, backgroundThread, isCollapsed, responseDisabled]);
 
   if (!activeQuestion) {
@@ -280,6 +316,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   questionTextAlign,
                   "group flex w-full items-start gap-2.5 rounded-md bg-transparent py-1.5 ps-2 sm:ps-1.5 outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/25",
                   isSelected ? "text-foreground" : "text-foreground/70 hover:bg-muted/30",
+                  index === highlightedIndex && "bg-muted/30 ring-1 ring-inset ring-primary/25",
                   (disabled || isResponding) && "opacity-50 cursor-not-allowed",
                   !disabled && !isResponding && "cursor-pointer",
                 );

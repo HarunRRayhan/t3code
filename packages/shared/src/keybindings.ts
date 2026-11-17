@@ -56,6 +56,23 @@ type WhenToken =
 
 export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+b", command: "sidebar.toggle" },
+  // Saved model picker jump rules use alt+shift+N while the picker is open, so these step aside.
+  { key: "alt+shift+1", command: "sidebar.filter.all", when: "!terminalFocus && !modelPickerOpen" },
+  {
+    key: "alt+shift+2",
+    command: "sidebar.filter.action",
+    when: "!terminalFocus && !modelPickerOpen",
+  },
+  {
+    key: "alt+shift+3",
+    command: "sidebar.filter.done",
+    when: "!terminalFocus && !modelPickerOpen",
+  },
+  {
+    key: "alt+shift+4",
+    command: "sidebar.filter.working",
+    when: "!terminalFocus && !modelPickerOpen",
+  },
   { key: "f6", command: "workspace.focusNext" },
   { key: "shift+f6", command: "workspace.focusPrevious" },
   // Some browsers keep plain F6 for their own toolbars; mod+F6 reaches the page in all of them.
@@ -109,6 +126,9 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
     command: "composer.sendAndNewThread",
     when: "composerFocus && !draftThreadRoute",
   },
+  // After the composer send chords: the last matching rule wins while an approval waits.
+  { key: "mod+enter", command: "approval.accept", when: "approvalPending" },
+  { key: "mod+backspace", command: "approval.decline", when: "approvalPending" },
   { key: "mod+n", command: "chat.new", when: "!terminalFocus" },
   { key: "mod+shift+o", command: "chat.new", when: "!terminalFocus" },
   { key: "mod+shift+n", command: "chat.newLocal", when: "!terminalFocus" },
@@ -130,6 +150,8 @@ export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+shift+c", command: "thread.copyReference", when: "!terminalFocus" },
   { key: "mod+shift+s", command: "thread.settle", when: "!terminalFocus" },
   { key: "mod+shift+p", command: "thread.pin", when: "!terminalFocus" },
+  { key: "mod+shift+w", command: "thread.archive", when: "!terminalFocus" },
+  { key: "mod+alt+shift+backspace", command: "thread.delete", when: "!terminalFocus" },
   { key: "mod+z", command: "thread.undo", when: "!terminalFocus && !editableFocus" },
   ...THREAD_JUMP_KEYBINDING_COMMANDS.map((command, index) => ({
     key: `mod+${index + 1}`,
