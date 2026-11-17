@@ -2772,12 +2772,14 @@ export default function ChatView(props: ChatViewProps) {
   const respondToChildApproval = useAtomCommand(threadEnvironment.respondToApproval, {
     reportFailure: false,
   });
+  const childApprovalRequestIds = childApprovals.map((entry) => entry.approval.requestId);
   const answerableChildApproval =
     answerableApproval !== null
       ? null
       : (childApprovals.find(
           (entry) =>
             entry.approval.responseCapability === "live" &&
+            !heldApprovalRequestIds.has(entry.approval.requestId) &&
             readEnvironmentScope(entry.thread.environmentId, AuthOrchestrationOperateScope),
         ) ?? null);
   const respondingChildApprovalIds = useRef(new Set<string>());
@@ -3829,6 +3831,7 @@ export default function ChatView(props: ChatViewProps) {
                                 activePendingApproval={activePendingApproval}
                                 pendingApprovals={pendingApprovals}
                                 onHeldRequestIdsChange={onHeldRequestIdsChange}
+                                childApprovalRequestIds={childApprovalRequestIds}
                                 pendingUserInputs={pendingUserInputs}
                                 activePendingIsResponding={activePendingIsResponding}
                                 respondingRequestIds={respondingRequestIds}

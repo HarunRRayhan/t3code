@@ -426,6 +426,7 @@ export interface ChatComposerProps {
   activePendingApproval: PendingApproval | null;
   pendingApprovals: PendingApproval[];
   onHeldRequestIdsChange: (requestIds: ReadonlySet<string>) => void;
+  childApprovalRequestIds: readonly string[];
   pendingUserInputs: PendingUserInput[];
   activePendingIsResponding: boolean;
   respondingRequestIds: RuntimeRequestId[];
@@ -553,6 +554,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     activePendingApproval: incomingPendingApproval,
     pendingApprovals,
     onHeldRequestIdsChange,
+    childApprovalRequestIds,
     pendingUserInputs: incomingPendingUserInputs,
     activePendingIsResponding: incomingPendingIsResponding,
     respondingRequestIds,
@@ -633,6 +635,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onSend: onTypingGuardSend,
   } = useComposerTypingGuard(composerDraftTargetKey, [
     ...pendingApprovals.map((request) => request.requestId),
+    ...childApprovalRequestIds,
     ...incomingPendingUserInputs.map((request) => request.requestId),
   ]);
   // A layout effect so the timeline never paints a held approval as answerable.
