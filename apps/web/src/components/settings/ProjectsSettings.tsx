@@ -1,7 +1,9 @@
 import { EnvironmentId } from "@t3tools/contracts";
 import { LayersIcon } from "lucide-react";
 
+import { useClientSettings } from "../../hooks/useSettings";
 import { Button } from "../ui/button";
+import { ProjectOrderList } from "./ProjectOrderList";
 import { ProjectSettingsPanel } from "./ProjectSettingsPanel";
 import { useSettingsScope } from "./SettingsScopeContext";
 import { SettingsScopeNotice } from "./SettingsScopeNotice";
@@ -10,6 +12,9 @@ import { ALL_ENVIRONMENTS_VALUE, selectEnvironmentAxis } from "./settingsScopeAx
 
 export function ProjectsSettings() {
   const { search: value, scope, selectScope } = useSettingsScope();
+  const manualOrder = useClientSettings(
+    (settings) => settings.sidebarProjectSortOrder === "manual",
+  );
   const unavailable =
     scope.kind === "unavailable" ? (
       <SettingsPageContainer>
@@ -46,9 +51,15 @@ export function ProjectsSettings() {
       ) : unavailable ? (
         unavailable
       ) : (
-        <SettingsScopeNotice target="project">
-          Choose a project to manage its name, icon, checkouts and actions.
-        </SettingsScopeNotice>
+        <SettingsPageContainer>
+          {manualOrder ? (
+            <ProjectOrderList />
+          ) : (
+            <SettingsScopeNotice inline target="project">
+              Choose a project to manage its name, icon, checkouts and actions.
+            </SettingsScopeNotice>
+          )}
+        </SettingsPageContainer>
       )}
     </div>
   );

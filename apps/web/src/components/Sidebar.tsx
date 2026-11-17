@@ -193,6 +193,8 @@ import {
   planSidebarThreadDrop,
   reduceSidebarProjectScopeMenuState,
   resolveAdjacentThreadId,
+  resolveThreadJumpTarget,
+  threadJumpNumberByKey,
   resolveSidebarSweepKeys,
   resolveSidebarDropTarget,
   resolveSidebarDropVerb,
@@ -212,7 +214,12 @@ import {
   useThreadJumpHintsVisible,
   type SidebarListItem,
   type SidebarSection,
+  resolveSidebarStatusGroup,
+  matchesSidebarStatusFilter,
+  type SidebarStatusFilter,
 } from "./Sidebar.logic";
+import { useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
+import { SidebarStatusFilterIcons } from "./sidebar/SidebarStatusFilterIcons";
 import {
   createSidebarCollisionDetection,
   createSidebarSortingStrategy,
@@ -359,6 +366,7 @@ interface SidebarThreadPartitionInput {
   readonly connectedEnvironmentIds: readonly EnvironmentId[];
   readonly optimisticDrop: SidebarOptimisticDrop | null;
   readonly workingShelfEnabled: boolean;
+  readonly statusFilter: SidebarStatusFilter;
   /** Boring mode: folders list active threads by the user's latest message. */
   readonly sortActiveBySend: boolean;
   // Snooze wakes, the queued-turn grace and the Working shelf's exit grace depend
@@ -481,6 +489,7 @@ function useSidebarThreads(input: {
   const settledVisibleCount =
     settledTail.scopeKey === projectScopeKey ? settledTail.count : SETTLED_TAIL_INITIAL_COUNT;
 
+  const [statusFilter] = useSidebarStatusFilter();
   const partition = partitionSidebarThreads({
     threads,
     scopedProjectKeys,
@@ -489,6 +498,7 @@ function useSidebarThreads(input: {
     connectedEnvironmentIds,
     optimisticDrop,
     workingShelfEnabled,
+    statusFilter,
     sortActiveBySend: folderGroups !== null,
     clockKey: `${nowMinute}:${snoozeWakeClock}:${inboxReturnsVersion}`,
   });
@@ -627,7 +637,21 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
     sortActiveBySend,
   } = input;
   const preciseNow = new Date().toISOString();
-  const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys, delegatedUnderParent);
+  // Settled threads stay listed: the filter narrows the active list, not the shelf of finished work.
+  const listable = filterSidebarV2VisibleThreads(threads, scopedProjectKeys, delegatedUnderParent);
+  const unsettled = listable.filter((thread) => thread.settledOverride !== "settled");
+  const statusCounts: Record<SidebarStatusFilter, number> = {
+    all: unsettled.length,
+    action: 0,
+    working: 0,
+    done: 0,
+  };
+  for (const thread of unsettled) statusCounts[resolveSidebarStatusGroup(thread)] += 1;
+  const visible = listable.filter(
+    (thread) =>
+      thread.settledOverride === "settled" ||
+      matchesSidebarStatusFilter(input.statusFilter, thread),
+  );
   const inboxObservation = inboxReturns.observe(workingShelfEnabled ? threads : null);
   const pinned: EnvironmentThreadShell[] = [];
   const active: EnvironmentThreadShell[] = [];
@@ -714,6 +738,7 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
     ),
     settledThreads: sortSettledThreads(settled),
     visibleThreads: visible,
+    statusCounts,
     snoozeNow: preciseNow,
   };
 }
@@ -1333,6 +1358,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     activeKeys,
     pinnedKeysById,
     activeKeysById,
+    statusCounts,
   } = useSidebarThreads({
     projectScopeKey,
     scopedProjectKeys,
@@ -1431,16 +1457,14 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const settledThreadKeysRef = useRef(settledThreadKeys);
   const snoozedThreadKeysRef = useRef(snoozedThreadKeys);
 
-  const jumpLabelByKey = (() => {
-    const mapping = new Map<string, string>();
-    for (const [index, threadKey] of orderedThreadKeys.entries()) {
-      const jumpCommand = threadJumpCommandForIndex(index);
-      if (!jumpCommand) break;
-      const label = shortcutLabelForCommand(keybindings, jumpCommand);
-      if (label) mapping.set(threadKey, label);
-    }
-    return mapping;
-  })();
+  const jumpLabelByKey = new Map<string, string>();
+  for (const [threadKey, jumpNumber] of threadJumpNumberByKey(orderedThreadKeys)) {
+    const jumpCommand = threadJumpCommandForIndex(jumpNumber - 1);
+    const label = jumpCommand ? shortcutLabelForCommand(keybindings, jumpCommand) : null;
+    if (label) jumpLabelByKey.set(threadKey, label);
+  }
+  // Row numbers are list positions; shortcuts only reach some of them.
+  const threadNumberByKey = new Map(orderedThreadKeys.map((key, index) => [key, index + 1]));
 
   const navigateToThread = (threadRef: ScopedThreadRef) => {
     if (useThreadSelectionStore.getState().selectedThreadKeys.size > 0) {
@@ -2916,7 +2940,14 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       }
       const jumpIndex = threadJumpIndexFromCommand(command ?? "");
       if (jumpIndex === null) return;
-      navigateToThreadKey(orderedThreadKeys[jumpIndex] ?? null);
+      const jumpTarget = resolveThreadJumpTarget(orderedThreadKeys, jumpIndex + 1);
+      if (jumpTarget?.kind === "picker") {
+        event.preventDefault();
+        event.stopPropagation();
+        openCommandPalette({ open: "threads" });
+        return;
+      }
+      navigateToThreadKey(jumpTarget?.threadKey ?? null);
     };
     window.addEventListener("keydown", onWindowKeyDown);
     return () => window.removeEventListener("keydown", onWindowKeyDown);
@@ -3433,6 +3464,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             jumpLabel={
                               showJumpHints ? (jumpLabelByKey.get(threadKey) ?? null) : null
                             }
+                            threadNumber={threadNumberByKey.get(threadKey) ?? null}
                             currentEnvironmentId={primaryEnvironmentId}
                             environmentLabel={
                               environmentLabelById.get(thread.environmentId) ?? null
@@ -3662,7 +3694,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           ) : null}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarChromeFooter />
+      <SidebarChromeFooter statusFilter={<SidebarStatusFilterIcons counts={statusCounts} />} />
     </SidebarFolderDrop>
   );
 }

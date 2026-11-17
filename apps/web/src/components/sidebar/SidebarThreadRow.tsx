@@ -573,6 +573,8 @@ type SidebarThreadRowProps = {
   // Read at click time; a prop would re-render every row on entering or leaving a thread route.
   readOpensPullRequestsInRightPanel: () => boolean;
   jumpLabel: string | null;
+  /** The ⌘N this thread answers to, shown as a small always-on tag in the row's left gutter. */
+  threadNumber: number | null;
   currentEnvironmentId: string | null;
   environmentLabel: string | null;
   environmentMachine: EnvironmentMachineKind;
@@ -1267,6 +1269,15 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           >
             {/* `contents` keeps one-line rows a single flex row. */}
             <div className={multiline ? "flex h-6 min-w-0 items-center gap-2.5" : "contents"}>
+              {inFolder && props.threadNumber !== null ? (
+                <span
+                  aria-hidden
+                  data-thread-number
+                  className="pointer-events-none absolute start-4 top-1/2 inline-flex h-3.5 min-w-3.5 -translate-y-1/2 select-none items-center justify-center rounded bg-foreground/[0.07] font-medium text-3xs text-muted-foreground tabular-nums leading-none"
+                >
+                  {props.threadNumber}
+                </span>
+              ) : null}
               {inFolder ? null : (
                 <span
                   className={cn(

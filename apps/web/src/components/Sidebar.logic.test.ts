@@ -7,6 +7,9 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 import {
+  resolveThreadJumpTarget,
+  threadJumpNumberByKey,
+  matchesSidebarStatusFilter,
   shouldCreateNewThreadInCurrentProject,
   deleteSelectedThreadEntries,
   getFallbackThreadIdAfterDelete,
@@ -833,6 +836,11 @@ describe("sortSidebarV2ProjectGroups", () => {
         (project) => project.projectKey,
       ),
     ).toEqual(["logical-newer", "logical-older"]);
+    expect(
+      sortSidebarV2ProjectGroups(projects, threads, "manual", new Set()).map(
+        (project) => project.projectKey,
+      ),
+    ).toEqual(["logical-older", "logical-newer"]);
   });
 });
 
@@ -1680,5 +1688,114 @@ describe("shouldCreateNewThreadInCurrentProject", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 1, 3)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(false, 0, 0)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(true, 2, 2)).toBe(true);
+  });
+});
+
+describe("thread jump numbers", () => {
+  const keys = (count: number) => Array.from({ length: count }, (_, index) => `t${index + 1}`);
+
+  it.each([
+    { count: 5, jump: 3, target: "t3" },
+    { count: 5, jump: 8, target: null },
+    { count: 5, jump: 9, target: "t5" },
+    { count: 8, jump: 8, target: "t8" },
+    { count: 9, jump: 8, target: "t8" },
+    { count: 9, jump: 9, target: "t9" },
+    { count: 12, jump: 7, target: "t7" },
+    { count: 12, jump: 8, target: "picker" },
+    { count: 12, jump: 9, target: "t12" },
+    { count: 0, jump: 9, target: null },
+  ])("$count threads: ⌘$jump goes to $target", ({ count, jump, target }) => {
+    const result = resolveThreadJumpTarget(keys(count), jump);
+    expect(result === null ? null : result.kind === "picker" ? "picker" : result.threadKey).toBe(
+      target,
+    );
+  });
+
+  it("tags only the threads a shortcut reaches", () => {
+    expect([...threadJumpNumberByKey(keys(3))]).toEqual([
+      ["t1", 1],
+      ["t2", 2],
+      ["t3", 3],
+    ]);
+    expect([...threadJumpNumberByKey(keys(12))]).toEqual([
+      ["t1", 1],
+      ["t2", 2],
+      ["t3", 3],
+      ["t4", 4],
+      ["t5", 5],
+      ["t6", 6],
+      ["t7", 7],
+      ["t12", 9],
+    ]);
+  });
+});
+
+describe("matchesSidebarStatusFilter", () => {
+  const idle = {
+    hasPendingApprovals: false,
+    hasPendingUserInput: false,
+    pendingSubagentRequest: null,
+    pendingGuestMessageCount: 0,
+    interactionMode: "default",
+    hasActionableProposedPlan: true,
+    runtime: null,
+    pendingBackgroundTasks: [],
+  } as const;
+  const runtime = (status: "preparing" | "queued" | "running" | "waiting" | "idle") => ({
+    status,
+    activeRunId: null,
+    providerInstanceId: ProviderInstanceId.make("codex"),
+    providerName: "Codex",
+    lastError: null,
+    updatedAt: "2026-03-09T10:00:00.000Z",
+  });
+
+  it.each([
+    ["approval", { ...idle, hasPendingApprovals: true }, "action"],
+    ["question", { ...idle, hasPendingUserInput: true }, "action"],
+    ["sub-agent request", { ...idle, pendingSubagentRequest: "approval" }, "action"],
+    ["plan to accept", { ...idle, interactionMode: "plan" }, "action"],
+    [
+      "running approval",
+      { ...idle, hasPendingApprovals: true, runtime: runtime("running") },
+      "action",
+    ],
+    ["preparing", { ...idle, runtime: runtime("preparing") }, "working"],
+    ["running", { ...idle, runtime: runtime("running") }, "working"],
+    ["queued", { ...idle, runtime: runtime("queued") }, "working"],
+    ["run waiting", { ...idle, runtime: runtime("waiting") }, "working"],
+    ["idle session (row reads Waiting)", { ...idle, runtime: runtime("idle") }, "working"],
+    [
+      "blocked on a child thread",
+      { ...idle, runtime: runtime("running"), blockedOnThreadWait: true },
+      "working",
+    ],
+    ["no runtime, plan outside plan mode", idle, "done"],
+    [
+      "turn ended, awaited background work (row reads Waiting)",
+      {
+        ...idle,
+        pendingBackgroundTasks: [
+          { taskId: "bg-1", description: "Watch build", kind: "monitor", awaited: true },
+        ],
+      },
+      "working",
+    ],
+    [
+      "turn ended, unawaited dev server",
+      {
+        ...idle,
+        pendingBackgroundTasks: [
+          { taskId: "bg-2", description: "Dev server", kind: "command" },
+        ],
+      },
+      "done",
+    ],
+  ] as const)("%s is %s", (_name, thread, group) => {
+    expect(matchesSidebarStatusFilter("all", thread)).toBe(true);
+    for (const filter of ["action", "working", "done"] as const) {
+      expect(matchesSidebarStatusFilter(filter, thread)).toBe(filter === group);
+    }
   });
 });

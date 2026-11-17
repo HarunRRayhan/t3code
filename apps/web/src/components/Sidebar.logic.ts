@@ -856,6 +856,40 @@ export function orderItemsByPreferredIds<TItem, TId>(input: {
   return [...ordered, ...remaining];
 }
 
+export type ThreadJumpTarget =
+  | { readonly kind: "thread"; readonly threadKey: string }
+  | { readonly kind: "picker" };
+
+/** Past this many threads, ⌘8 opens the thread picker and ⌘9 keeps pointing at the last thread. */
+const THREAD_JUMP_SLOTS = 9;
+
+/** ⌘9 is always the last thread; ⌘8 is a thread picker once the sidebar outgrows the nine slots. */
+export function resolveThreadJumpTarget(
+  orderedThreadKeys: readonly string[],
+  jumpNumber: number,
+): ThreadJumpTarget | null {
+  const last = orderedThreadKeys.at(-1);
+  if (jumpNumber === THREAD_JUMP_SLOTS)
+    return last === undefined ? null : { kind: "thread", threadKey: last };
+  if (jumpNumber === THREAD_JUMP_SLOTS - 1 && orderedThreadKeys.length > THREAD_JUMP_SLOTS) {
+    return { kind: "picker" };
+  }
+  const threadKey = orderedThreadKeys[jumpNumber - 1];
+  return threadKey === undefined ? null : { kind: "thread", threadKey };
+}
+
+/** The ⌘N number each sidebar thread answers to; threads hidden behind the picker get none. */
+export function threadJumpNumberByKey(orderedThreadKeys: readonly string[]): Map<string, number> {
+  const numbers = new Map<string, number>();
+  for (let jumpNumber = 1; jumpNumber <= THREAD_JUMP_SLOTS; jumpNumber += 1) {
+    const target = resolveThreadJumpTarget(orderedThreadKeys, jumpNumber);
+    if (target?.kind === "thread" && !numbers.has(target.threadKey)) {
+      numbers.set(target.threadKey, jumpNumber);
+    }
+  }
+  return numbers;
+}
+
 export function resolveAdjacentThreadId<T>(input: {
   threadIds: readonly T[];
   currentThreadId: T | null;
@@ -1460,4 +1494,55 @@ export function sortScopedProjectsForSidebar<
       left.environmentId.localeCompare(right.environmentId) ||
       left.id.localeCompare(right.id),
   );
+}
+
+export const SIDEBAR_STATUS_GROUPS = ["action", "working", "done"] as const;
+export type SidebarStatusGroup = (typeof SIDEBAR_STATUS_GROUPS)[number];
+export type SidebarStatusFilter = "all" | SidebarStatusGroup;
+
+/** Threads waiting on the user: an approval, a question, a plan to accept, or a guest message. */
+export function isThreadActionNeeded(
+  thread: Pick<
+    SidebarThreadSummary,
+    | "hasPendingApprovals"
+    | "hasPendingUserInput"
+    | "pendingSubagentRequest"
+    | "pendingGuestMessageCount"
+    | "interactionMode"
+    | "hasActionableProposedPlan"
+  >,
+): boolean {
+  return (
+    thread.hasPendingApprovals ||
+    thread.hasPendingUserInput ||
+    thread.pendingSubagentRequest != null ||
+    (thread.pendingGuestMessageCount ?? 0) > 0 ||
+    (thread.interactionMode === "plan" && thread.hasActionableProposedPlan)
+  );
+}
+
+type SidebarStatusGroupInput = Parameters<typeof isThreadActionNeeded>[0] &
+  Parameters<typeof resolveSidebarThreadStatus>[0] &
+  Pick<SidebarThreadSummary, "pendingBackgroundTasks">;
+
+const WORKING_ROW_STATUSES: ReadonlySet<SidebarThreadStatus> = new Set([
+  "preparing",
+  "working",
+  "waiting",
+]);
+
+/** Working matches the rows that read Connecting, Working, or Waiting, including awaited background work. */
+export function resolveSidebarStatusGroup(thread: SidebarStatusGroupInput): SidebarStatusGroup {
+  if (isThreadActionNeeded(thread)) return "action";
+  return WORKING_ROW_STATUSES.has(resolveSidebarThreadStatus(thread)) ||
+    backgroundWorkHoldsCompletion(thread.pendingBackgroundTasks ?? [])
+    ? "working"
+    : "done";
+}
+
+export function matchesSidebarStatusFilter(
+  filter: SidebarStatusFilter,
+  thread: SidebarStatusGroupInput,
+): boolean {
+  return filter === "all" || filter === resolveSidebarStatusGroup(thread);
 }

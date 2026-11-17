@@ -26,6 +26,8 @@ import {
 import { isEditableFocused } from "../lib/editableFocus";
 import { isPreviewFocused } from "../lib/previewFocus";
 import { isTerminalFocused } from "../lib/terminalFocus";
+import type { SidebarStatusFilter } from "./Sidebar.logic";
+import { useSidebarStatusFilter } from "./sidebar/sidebarStatusFilter";
 import { isModelPickerOpen } from "../modelPickerVisibility";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
@@ -312,11 +314,19 @@ function registerAppShellCommands(router: AnyRouter, shellElement: Element): () 
   };
 }
 
+const SIDEBAR_FILTER_COMMANDS: Partial<Record<string, SidebarStatusFilter>> = {
+  "sidebar.filter.all": "all",
+  "sidebar.filter.action": "action",
+  "sidebar.filter.working": "working",
+  "sidebar.filter.done": "done",
+};
+
 function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
   const router = useRouter();
   const usagePageOpen = useLocation({ select: (location) => location.pathname === "/usage" });
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { toggleSidebar } = useSidebar();
+  const [, setStatusFilter] = useSidebarStatusFilter();
   const mobileSidebarSheetMounted = useMobileSidebarSheetMounted();
   const isSidebarVisible = useSidebarVisibility();
   const environmentIdentificationMode = useEnvironmentIdentificationMode();
@@ -350,15 +360,18 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
         context: {
           terminalFocus: isTerminalFocused(),
           previewFocus: isPreviewFocused(),
+          modelPickerOpen: isModelPickerOpen(),
           ...readRoutePanelsOpen(router),
           usagePageOpen,
         },
       });
-      if (command !== "sidebar.toggle") return;
+      const filter = SIDEBAR_FILTER_COMMANDS[command ?? ""];
+      if (command !== "sidebar.toggle" && filter === undefined) return;
 
       event.preventDefault();
       event.stopPropagation();
-      toggleSidebar();
+      if (filter !== undefined) setStatusFilter(filter);
+      else toggleSidebar();
     };
 
     window.addEventListener("keydown", onKeyDown, true);
@@ -369,7 +382,7 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
       window.removeEventListener("keydown", onKeyDown, true);
       unsubscribe?.();
     };
-  }, [keybindings, router, showSidebar, toggleSidebar, usagePageOpen]);
+  }, [keybindings, router, showSidebar, toggleSidebar, setStatusFilter, usagePageOpen]);
 
   // The control lives as long as the shell, so it carries the shell's commands. Created
   // once so re-renders never re-register them.

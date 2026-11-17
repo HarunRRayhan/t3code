@@ -151,7 +151,9 @@ cannot drag or move threads within it. Your saved order returns when you turn it
 ### Group threads by project (beta)
 
 Turn on **Settings → Labs → Boring sidebar (group by project)** on web and desktop to put active
-threads in a folder for each project. Pinned projects come first. A project with no active
+threads in a folder for each project. Pinned projects come first. To fix the folder order, turn on **Customize project order**
+under that setting and drag projects into place in **Settings → Projects**. Agent activity won't
+move them while it is on. A project with no active
 threads has no folder unless it is pinned or you pick it in the project filter. An archived
 project's folder comes last and shows only while it has active threads. Click a folder to open or
 close it. A closed folder shows how many threads it holds, and a dot when one of them
@@ -222,6 +224,12 @@ same link to return to the branch PR, if one exists.
 The linked pull request participates in automatic settlement.
 
 ## Find and reference work
+
+The four status icons at the bottom of the sidebar, left of the update button, show all threads or narrow the list to those that need your
+attention, are done, or are working (every row that reads Connecting, Working, or Waiting). The
+number on each icon counts its threads.
+`Alt+Shift+1` through `Alt+Shift+4` pick All, Attention, Done, and Working.
+Settled threads stay listed whatever you pick.
 
 On web and desktop, open the command palette with `Cmd/Ctrl+K` to search threads
 across connected environments by title, branch, pull request, or project.
