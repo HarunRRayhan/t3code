@@ -12,10 +12,12 @@ import {
   buildExpiredTerminalContextToastCopy,
   mergeDirectPreviewAnnotation,
   planComposerTurn,
+  restorePlanFollowUpComposer,
   deriveTimelineWorking,
   snapshotComposerSend,
   withMessageContext,
   deriveAvailableRevertTurnCounts,
+  resolveModeModelOverride,
   deriveThreadPendingBackgroundTasks,
 } from "./ChatView.logic";
 import {
@@ -1404,6 +1406,61 @@ describe("planComposerTurn", () => {
   });
 });
 
+describe("restorePlanFollowUpComposer", () => {
+  // The draft is the failed follow-up's thread; the refs and cursor are whatever thread is on
+  // screen.
+  it.each([
+    {
+      name: "puts the follow-up back while its thread is open",
+      before: { draft: "", refs: "", cursor: null },
+      routeIsCurrent: true,
+      after: { draft: "Tighten step 2", refs: "Tighten step 2", cursor: "Tighten step 2" },
+    },
+    {
+      name: "keeps a draft typed while the follow-up was in flight",
+      before: { draft: "Next idea", refs: "Next idea", cursor: null },
+      routeIsCurrent: true,
+      after: { draft: "Next idea", refs: "Next idea", cursor: null },
+    },
+    {
+      name: "leaves another thread's composer alone after navigating away",
+      before: { draft: "", refs: "Other thread", cursor: null },
+      routeIsCurrent: false,
+      after: { draft: "Tighten step 2", refs: "Other thread", cursor: null },
+    },
+  ])("$name", ({ before, routeIsCurrent, after }) => {
+    const composer: { draft: string; refs: string; cursor: string | null } = { ...before };
+    restorePlanFollowUpComposer({
+      snapshot: {
+        prompt: "Tighten step 2",
+        environmentContexts: [],
+        terminalContexts: [],
+        reviewComments: [],
+        previewAnnotations: [],
+        threadContexts: [],
+      },
+      draftHasUserContent: composer.draft.trim().length > 0,
+      routeIsCurrent,
+      writeComposerRefs: (snapshot) => {
+        composer.refs = snapshot.prompt;
+      },
+      writePrompt: (prompt) => {
+        composer.draft = prompt;
+      },
+      writeTerminalContexts: () => undefined,
+      writeReviewComments: () => undefined,
+      writePreviewAnnotations: () => undefined,
+      writeThreadContexts: () => undefined,
+      writeEnvironmentContexts: () => undefined,
+      resetCursor: ({ prompt }) => {
+        composer.cursor = prompt;
+      },
+    });
+
+    expect(composer).toEqual(after);
+  });
+});
+
 describe("withMessageContext", () => {
   const context = { records: [] } as unknown as NonNullable<
     Parameters<typeof withMessageContext>[0]["context"]
@@ -1638,5 +1695,79 @@ describe("prepareRevertedMessageAttachments", () => {
     ]);
     expect(store.addImages(target, repeat)).toEqual([]);
     expect(store.getComposerDraft(target)?.images.map(({ id }) => id)).toEqual(["restored"]);
+  });
+});
+
+describe("resolveModeModelOverride", () => {
+  const pick = (instance: string, model: string) => ({
+    instanceId: ProviderInstanceId.make(instance),
+    model,
+  });
+  const plan = pick("claude", "opus");
+  const build = pick("claude", "sonnet");
+
+  it.each([
+    {
+      name: "plan mode uses the plan model",
+      planMode: true,
+      thread: build,
+      selected: "claude",
+      want: plan,
+    },
+    {
+      name: "plan mode keeps a locked thread on its provider",
+      planMode: true,
+      thread: build,
+      selected: "codex",
+      want: null,
+    },
+    {
+      name: "no plan model leaves everything alone",
+      planMode: true,
+      thread: build,
+      selected: "claude",
+      planModel: null,
+      want: null,
+    },
+    {
+      name: "leaving plan swaps a thread still on the plan model for the build model",
+      planMode: false,
+      thread: plan,
+      selected: "claude",
+      want: build,
+    },
+    {
+      name: "a thread the user moved off the plan model keeps its choice",
+      planMode: false,
+      thread: pick("claude", "haiku"),
+      selected: "claude",
+      want: null,
+    },
+    {
+      name: "no build model keeps the thread where it is",
+      planMode: false,
+      thread: plan,
+      selected: "claude",
+      buildModel: null,
+      want: null,
+    },
+    {
+      name: "a build model on another provider never moves a started thread",
+      planMode: false,
+      thread: plan,
+      selected: "claude",
+      buildModel: pick("codex", "gpt"),
+      want: null,
+    },
+  ])("$name", ({ planMode, thread, selected, want, ...rest }) => {
+    expect(
+      resolveModeModelOverride({
+        planMode,
+        planModel: "planModel" in rest ? (rest.planModel ?? null) : plan,
+        buildModel: "buildModel" in rest ? (rest.buildModel ?? null) : build,
+        threadModelSelection: thread,
+        selectedInstanceId: ProviderInstanceId.make(selected),
+      }),
+    ).toEqual(want);
   });
 });

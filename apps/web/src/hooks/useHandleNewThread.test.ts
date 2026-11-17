@@ -20,6 +20,10 @@ const testState = vi.hoisted(() => {
   } | null = null;
   let openDraftRoute: { readonly kind: "draft"; readonly draftId: string } | null = null;
   let draftsWithUserText = new Set<string>();
+  let clientSettings: {
+    newThreadsStartInPlan?: boolean;
+    projectPlanOverrides?: Record<string, { startInPlan?: boolean }>;
+  } = {};
   const router = {
     state: {
       location: { href: "/" },
@@ -47,6 +51,7 @@ const testState = vi.hoisted(() => {
     getDraftThread: vi.fn(() => null),
     applyStickyState: vi.fn(),
     setDraftThreadContext: vi.fn(),
+    setInteractionMode: vi.fn(),
     setLogicalProjectDraftThreadId: vi.fn(),
     setModelSelection: vi.fn(),
     setPrompt: vi.fn(),
@@ -84,6 +89,12 @@ const testState = vi.hoisted(() => {
     get targetSettings() {
       return targetSettings;
     },
+    get clientSettings() {
+      return clientSettings;
+    },
+    setClientSettings(next: typeof clientSettings) {
+      clientSettings = next;
+    },
     reset(
       nextStoredDraft: typeof storedDraft,
       workspaceDefaults = {
@@ -94,6 +105,7 @@ const testState = vi.hoisted(() => {
       storedDraft = nextStoredDraft;
       openDraftRoute = null;
       draftsWithUserText = new Set();
+      clientSettings = {};
       projectRemoved = false;
       connectedEnvironmentIds = ["environment-primary", "environment-ssh"];
       targetSettings = {
@@ -107,6 +119,7 @@ const testState = vi.hoisted(() => {
       draftStore.setDraftThreadContext.mockClear();
       draftStore.setLogicalProjectDraftThreadId.mockClear();
       draftStore.setPrompt.mockClear();
+      draftStore.setInteractionMode.mockClear();
       projectFileRead = new Promise<null>((resolve) => {
         completeProjectFileRead = resolve;
       });
@@ -249,7 +262,9 @@ vi.mock("../uiStateStore", () => ({
   legacyProjectCwdPreferenceKey: () => "remote-project",
   useUiStateStore: () => [],
 }));
-vi.mock("./useSettings", () => ({ getClientSettings: () => ({}) }));
+vi.mock("./useSettings", () => ({
+  getClientSettings: () => ({ projectPlanOverrides: {}, ...testState.clientSettings }),
+}));
 
 import { resolveDefaultProjectRef, useNewThreadHandler } from "./useHandleNewThread";
 
@@ -338,6 +353,39 @@ describe("useNewThreadHandler", () => {
 
     expect(opened?.draftId).toBe("draft-raced");
     expect(testState.draftStore.setPrompt).not.toHaveBeenCalled();
+  });
+
+  it("lets a reopened empty draft follow New thread mode: Plan, but not one already open", async () => {
+    const stored = {
+      draftId: "draft-stored",
+      environmentId: "environment-ssh",
+      promotedTo: null,
+      threadId: "thread-stored",
+    };
+    const project = { environmentId: "environment-ssh", projectId: "project-remote" } as never;
+
+    testState.reset(stored);
+    testState.setClientSettings({ newThreadsStartInPlan: true });
+    await useNewThreadHandler()(project);
+    expect(testState.draftStore.setInteractionMode).toHaveBeenCalledWith("draft-stored", null);
+
+    testState.reset(stored);
+    testState.setClientSettings({ newThreadsStartInPlan: true });
+    testState.openEmptyDraft("draft-stored");
+    await useNewThreadHandler()(project);
+    expect(testState.draftStore.setInteractionMode).not.toHaveBeenCalled();
+
+    testState.reset(stored);
+    await useNewThreadHandler()(project);
+    expect(testState.draftStore.setInteractionMode).not.toHaveBeenCalled();
+
+    testState.reset(stored);
+    testState.setClientSettings({
+      newThreadsStartInPlan: true,
+      projectPlanOverrides: { "remote-project": { startInPlan: false } },
+    });
+    await useNewThreadHandler()(project);
+    expect(testState.draftStore.setInteractionMode).not.toHaveBeenCalled();
   });
 
   it("seeds the prompt into the empty draft that is already open", async () => {
