@@ -168,3 +168,19 @@ describe("SidebarUpdatePill update everything", () => {
     await expect.element(row.getByRole("cell", { name: "Claude", exact: true })).toBeVisible();
   });
 });
+
+describe("SidebarUpdatePill with app updates off", () => {
+  it("still checks for agent updates", async () => {
+    setup({
+      ...nightlyUpdate([]),
+      enabled: false,
+      status: "disabled",
+      availableVersion: null,
+      message: "Automatic updates are disabled by the T3CODE_DISABLE_AUTO_UPDATE setting.",
+    });
+    await using screen = await render(<SidebarUpdatePill />);
+    await expect
+      .element(screen.getByRole("button", { name: /^Check for agent updates/ }))
+      .toBeEnabled();
+  });
+});

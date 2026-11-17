@@ -249,8 +249,17 @@ function SidebarUpdateControl() {
     isDownloading,
     showCheckIcon,
   });
+  // With app self-update off (an env switch, an unpackaged build), agent updates still work.
+  const appUpdatesOff =
+    updatesDenial === undefined &&
+    state !== null &&
+    (!state.enabled || state.status === "disabled");
   const idleTooltip =
-    !showUpdateDetails && !showCheckIcon ? getDesktopUpdateIdleTooltip(state, updatesDenial) : null;
+    !showUpdateDetails && !showCheckIcon
+      ? appUpdatesOff
+        ? { title: "Check for agent updates", detail: state?.message ?? null }
+        : getDesktopUpdateIdleTooltip(state, updatesDenial)
+      : null;
   const tooltip = runsEverything
     ? everything.summary
     : showUpdateDetails
@@ -266,7 +275,7 @@ function SidebarUpdateControl() {
       ? false
       : showUpdateDetails
         ? isDesktopUpdateButtonDisabled(state)
-        : !canCheckForUpdate(state);
+        : !canCheckForUpdate(state) && !appUpdatesOff;
   const isInteractionDisabled = disabled || isActionPending || isRunningEverything;
   const showReleaseNotesPopover =
     !isRunningEverything && shouldUseSidebarUpdateReleaseNotesPopover(showUpdateDetails, state);
@@ -333,9 +342,9 @@ function SidebarUpdateControl() {
       setIsCheckAnimationLatched(true);
       setCheckAnimationKey((key) => key + 1);
     }
-    const appCheck = bridge
-      .checkForUpdate()
+    const appCheck = (appUpdatesOff ? Promise.resolve(null) : bridge.checkForUpdate())
       .then((result) => {
+        if (result === null) return;
         if (result.checked) return;
         toastManager.add(
           stackedThreadToast({

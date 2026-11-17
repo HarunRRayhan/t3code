@@ -44,6 +44,7 @@ export class DesktopEnvironment extends Context.Service<
     readonly resourcesPath: string;
     readonly homeDirectory: string;
     readonly appDataDirectory: string;
+    readonly userDataName: Option.Option<string>;
     readonly baseDir: string;
     readonly stateDir: string;
     readonly desktopSettingsPath: string;
@@ -90,10 +91,12 @@ const APP_BASE_NAME = "T3 Code";
 function resolveDesktopAppStageLabel(input: {
   readonly isDevelopment: boolean;
   readonly appVersion: string;
+  readonly personalBuild?: boolean;
 }): DesktopAppStageLabel {
   if (input.isDevelopment) {
     return "Dev";
   }
+  if (input.personalBuild) return "Personal";
 
   return isNightlyDesktopVersion(input.appVersion) ? "Nightly" : "Beta";
 }
@@ -101,6 +104,7 @@ function resolveDesktopAppStageLabel(input: {
 export function resolveDesktopAppBranding(input: {
   readonly isDevelopment: boolean;
   readonly appVersion: string;
+  readonly personalBuild?: boolean;
 }): DesktopAppBranding {
   const stageLabel = resolveDesktopAppStageLabel(input);
   return {
@@ -170,6 +174,7 @@ const make = Effect.fn("desktop.environment.make")(function* (
   const branding = resolveDesktopAppBranding({
     isDevelopment,
     appVersion: input.appVersion,
+    personalBuild: config.personalBuild,
   });
   const displayName = branding.displayName;
   const stateDir = resolveDesktopStateDir({
@@ -196,6 +201,7 @@ const make = Effect.fn("desktop.environment.make")(function* (
     resourcesPath,
     homeDirectory,
     appDataDirectory,
+    userDataName: config.personalBuild ? Option.some("t3code-personal") : Option.none(),
     baseDir,
     stateDir,
     desktopSettingsPath: path.join(stateDir, "desktop-settings.json"),
