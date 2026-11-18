@@ -4,7 +4,6 @@ import { AuthEnvironmentMaintainScope } from "@t3tools/contracts";
 import { usePrimaryCloudLinkState } from "~/cloud/cloudLinkState";
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { isElectron } from "~/env";
-import { useClientSettings } from "~/hooks/useSettings";
 import { isLocalEnvironmentDisabled } from "~/localEnvironment";
 import { desktopWslStateAtom } from "~/state/desktopWslState";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
@@ -20,7 +19,6 @@ import {
 
 export function useAvailableSettingsSearchItems() {
   const { environments } = useEnvironments();
-  const planModeEnabled = useClientSettings((settings) => settings.planModeEnabled);
   // Explicit booleans keep flags out of the filter cache so environment updates do not rebuild the list.
   const hasEnvironment =
     environments.some((environment) => environment.serverConfig !== null) === true;
@@ -77,6 +75,5 @@ export function useAvailableSettingsSearchItems() {
     hasFastWorktreeCheckoutEnvironment,
     hasTextGeneratorsEnvironment,
     hasPrimaryEnvironment: primaryEnvironmentId !== null,
-    planModeEnabled,
   });
 }

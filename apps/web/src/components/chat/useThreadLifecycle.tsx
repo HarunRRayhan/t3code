@@ -49,7 +49,7 @@ import {
   type AtomCommandResult,
 } from "@t3tools/client-runtime/state/runtime";
 import { useUiStateStore } from "../../uiStateStore";
-import { type ChatMessage } from "../../types";
+import { type ChatMessage, DEFAULT_INTERACTION_MODE } from "../../types";
 import { AlarmClockIcon, CheckCircle2Icon } from "lucide-react";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { titleRegenerationToast } from "../threadTitleRegenerationToast";
@@ -190,8 +190,7 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
   const messages = useMessages();
   const navigate = useNavigate();
   const router = useRouter();
-  const { settleThread, pinThread, confirmAndUnpinThread, archiveThread, confirmAndDeleteThread } =
-    useThreadActions();
+  const { settleThread, pinThread, confirmAndUnpinThread } = useThreadActions();
   const canWriteSourceControl = useEnvironmentScope(environmentId, AuthSourceControlWriteScope);
   const switchGitRef = useAtomCommand(vcsEnvironment.switchRef, { reportFailure: false });
   const updateThreadMetadata = useOrchestrationCommand(threadEnvironment.updateMetadata, {
@@ -555,7 +554,7 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
       createdAt,
       ...(localCheckoutBranchMismatch ? { branch: localCheckoutBranchMismatch.currentBranch } : {}),
       runtimeMode,
-      interactionMode: context.interactionMode,
+      interactionMode: DEFAULT_INTERACTION_MODE,
     });
     const result =
       settingsResult._tag === "Failure"
@@ -567,7 +566,7 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
               message: { messageId, role: "user", text, attachments: [] },
               modelSelection: context.selectedModelSelection,
               runtimeMode,
-              interactionMode: context.interactionMode,
+              interactionMode: DEFAULT_INTERACTION_MODE,
               createdAt,
             },
           });
@@ -719,24 +718,6 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
           activeThreadPinned ? m(msg("Failed to unpin thread")) : m(msg("Failed to pin thread")),
         ),
       );
-    },
-    "thread.archive": ({ event }) => {
-      if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) return false;
-      if (!activeThreadShell || !activeThreadRef || !serverConfigLoaded) return;
-      if (!event.repeat) {
-        void archiveThread(activeThreadRef).then(
-          toastThreadActionFailure("Failed to archive thread"),
-        );
-      }
-    },
-    "thread.delete": ({ event }) => {
-      if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) return false;
-      if (!activeThreadShell || !activeThreadRef || !serverConfigLoaded) return;
-      if (!event.repeat) {
-        void confirmAndDeleteThread(activeThreadRef, activeThreadShell.title).then(
-          toastThreadActionFailure("Failed to delete thread"),
-        );
-      }
     },
     "thread.regenerateTitle": () => {
       if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) return false;

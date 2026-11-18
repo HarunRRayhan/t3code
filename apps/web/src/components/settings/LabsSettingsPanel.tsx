@@ -22,7 +22,6 @@ export function LabsSettingsPanel() {
     <SettingsPageContainer>
       <SettingsSection id="beta" title={gt("Beta")}>
         <BoringSidebarRow />
-        <PlanModeRow />
         {/* Clerk is only mounted when this build has T3 Connect. */}
         {hasCloudPublicConfig() ? <GuestLinksRowWithSignIn /> : <GuestLinksRow />}
         <LinkedEnvironmentsRow />
@@ -84,28 +83,6 @@ function BoringSidebarProjectOrderRow() {
             })
           }
           aria-label={gt("Customize project order")}
-        />
-      }
-    />
-  );
-}
-
-function PlanModeRow() {
-  const searchableSetting = useSearchableSetting();
-  const gt = useGT();
-  const settings = useScopedSettings();
-  const updateSettings = useUpdateScopedSettings();
-  return (
-    <SettingsRow
-      {...searchableSetting("plan-mode")}
-      description={gt(
-        "Show the Build and Plan switch in the composer, and the plan follow-up after an agent proposes a plan. Start mode and Plan model are in Settings → Threads.",
-      )}
-      control={
-        <Switch
-          checked={settings.planModeEnabled}
-          onCheckedChange={(checked) => updateSettings({ planModeEnabled: Boolean(checked) })}
-          aria-label={gt("Plan mode")}
         />
       }
     />

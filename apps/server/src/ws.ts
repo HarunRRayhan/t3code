@@ -438,8 +438,6 @@ export const resolveOpenDiscoveryForConfig = <T, D, E1, R1, E2, R2, E3, R3, E4, 
   ).pipe(Effect.map(({ editorConfig, ...endpoints }) => ({ ...editorConfig, ...endpoints })));
 // A failed scan leaves no cwd snapshot, so a client without the machine catalog gets it
 // as a pending snapshot, which it shows while it retries the scan.
-const isThreadAlreadyExists = Schema.is(Orchestrator.OrchestratorThreadAlreadyExistsError);
-
 function workspaceSnapshotOrCatalog(
   provider: ServerProvider,
   cwd: string,
@@ -2262,9 +2260,6 @@ export const layerWsRpc = (
                         commandId: input.commandId,
                         projectId: input.projectId,
                         message: "Failed to launch thread",
-                        ...(isThreadAlreadyExists(cause.cause)
-                          ? { reason: "thread-id-taken" as const }
-                          : {}),
                         cause,
                       }),
                     ServerRuntimeStartupError: (cause) =>
