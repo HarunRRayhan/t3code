@@ -2,7 +2,6 @@ import { BellRingIcon, CircleCheckIcon, ListIcon, ZapIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import type { SidebarStatusFilter } from "../Sidebar.logic";
-import { SidebarMenuItem } from "../ui/sidebar";
 import { Toggle } from "../ui/toggle";
 import { useSidebarStatusFilter } from "./sidebarStatusFilter";
 
@@ -30,44 +29,42 @@ export function SidebarStatusFilterIcons(props: {
   const [filter, setFilter] = useSidebarStatusFilter();
 
   return (
-    <SidebarMenuItem className="order-first flex w-full basis-full justify-start">
-      <div
-        role="group"
-        aria-label="Filter threads by status"
-        className="ml-1 flex items-center gap-4"
-      >
-        {FILTERS.map((entry) => {
-          const count = props.counts[entry.value];
-          const selected = filter === entry.value;
-          return (
-            <Toggle
-              key={entry.value}
-              size="xs"
-              variant="ghost"
-              pressed={selected}
-              onPressedChange={() => setFilter(entry.value)}
-              aria-label={`${entry.name}: ${count}`}
-              title={entry.name}
-            >
-              <span className="relative grid place-items-center">
-                <entry.Icon
-                  className={cn("size-4", selected ? entry.color : "text-sidebar-muted-foreground")}
-                  aria-hidden
-                />
-                <span
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute -right-1.5 -bottom-1.5 text-3xs leading-none font-bold tabular-nums [paint-order:stroke] [-webkit-text-stroke:2.5px_var(--sidebar)]",
-                    entry.color,
-                  )}
-                >
-                  {count > 99 ? "99+" : count}
-                </span>
+    <div
+      role="group"
+      aria-label="Filter threads by status"
+      className="mt-1 ml-1 flex items-center gap-4"
+    >
+      {FILTERS.map((entry) => {
+        const count = props.counts[entry.value];
+        const selected = filter === entry.value;
+        return (
+          <Toggle
+            key={entry.value}
+            size="xs"
+            variant="ghost"
+            pressed={selected}
+            onPressedChange={() => setFilter(entry.value)}
+            aria-label={`${entry.name}: ${count}`}
+            title={entry.name}
+          >
+            <span className="relative grid place-items-center">
+              <entry.Icon
+                className={cn("size-4", selected ? entry.color : "text-sidebar-muted-foreground")}
+                aria-hidden
+              />
+              <span
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute -right-1.5 -bottom-1.5 text-3xs leading-none font-bold tabular-nums [paint-order:stroke] [-webkit-text-stroke:2.5px_var(--sidebar)]",
+                  entry.color,
+                )}
+              >
+                {count > 99 ? "99+" : count}
               </span>
-            </Toggle>
-          );
-        })}
-      </div>
-    </SidebarMenuItem>
+            </span>
+          </Toggle>
+        );
+      })}
+    </div>
   );
 }

@@ -3249,6 +3249,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               activeSearchResultIndex={activeSearchResultIndex}
               onClearSearch={clearThreadSearch}
             />
+            <SidebarStatusFilterIcons counts={statusCounts} />
           </SidebarGroup>
         }
       >
@@ -3735,7 +3736,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           ) : null}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarChromeFooter statusFilter={<SidebarStatusFilterIcons counts={statusCounts} />} />
+      <SidebarChromeFooter />
     </SidebarFolderDrop>
   );
 }

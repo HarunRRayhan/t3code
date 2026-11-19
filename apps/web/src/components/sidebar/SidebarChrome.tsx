@@ -225,11 +225,7 @@ function SidebarUtilityItem({
   );
 }
 
-const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
-  statusFilter,
-}: {
-  statusFilter: ReactNode;
-}) {
+const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const navigate = useNavigate();
   const navigateToMainApp = useNavigateToMainApp();
   const gt = useGT();
@@ -273,7 +269,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
   };
 
   return (
-    <SidebarMenu className="flex-row flex-wrap items-center">
+    <SidebarMenu className="flex-row items-center">
       {isOnUtilityPage ? (
         <SidebarMenuItem className="min-w-0 flex-1">
           <SidebarMenuButton onClick={handleBackClick}>
@@ -312,22 +308,17 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
         </>
       )}
       <SidebarThreadUndoNotice />
-      {isOnUtilityPage ? null : statusFilter}
       <SidebarUpdatePill />
     </SidebarMenu>
   );
 });
 
-export const SidebarChromeFooter = memo(function SidebarChromeFooter({
-  statusFilter,
-}: {
-  statusFilter: ReactNode;
-}) {
+export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
   return (
     <SidebarFooter>
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
-      <SidebarUtilityMenu statusFilter={statusFilter} />
+      <SidebarUtilityMenu />
     </SidebarFooter>
   );
 });
