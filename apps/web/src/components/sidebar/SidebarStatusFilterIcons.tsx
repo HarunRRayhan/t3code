@@ -30,7 +30,7 @@ export function SidebarStatusFilterIcons(props: {
   const [filter, setFilter] = useSidebarStatusFilter();
 
   return (
-    <SidebarMenuItem className="flex min-w-0 flex-1 justify-center">
+    <SidebarMenuItem className="order-first flex w-full basis-full justify-center">
       <div role="group" aria-label="Filter threads by status" className="flex items-center gap-2">
         {FILTERS.map((entry) => {
           const count = props.counts[entry.value];
