@@ -190,7 +190,8 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
   const messages = useMessages();
   const navigate = useNavigate();
   const router = useRouter();
-  const { settleThread, pinThread, confirmAndUnpinThread } = useThreadActions();
+  const { settleThread, pinThread, confirmAndUnpinThread, archiveThread, confirmAndDeleteThread } =
+    useThreadActions();
   const canWriteSourceControl = useEnvironmentScope(environmentId, AuthSourceControlWriteScope);
   const switchGitRef = useAtomCommand(vcsEnvironment.switchRef, { reportFailure: false });
   const updateThreadMetadata = useOrchestrationCommand(threadEnvironment.updateMetadata, {
@@ -718,6 +719,24 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
           activeThreadPinned ? m(msg("Failed to unpin thread")) : m(msg("Failed to pin thread")),
         ),
       );
+    },
+    "thread.archive": ({ event }) => {
+      if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) return false;
+      if (!activeThreadShell || !activeThreadRef || !serverConfigLoaded) return;
+      if (!event.repeat) {
+        void archiveThread(activeThreadRef).then(
+          toastThreadActionFailure(m(msg("Failed to archive thread"))),
+        );
+      }
+    },
+    "thread.delete": ({ event }) => {
+      if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) return false;
+      if (!activeThreadShell || !activeThreadRef || !serverConfigLoaded) return;
+      if (!event.repeat) {
+        void confirmAndDeleteThread(activeThreadRef, activeThreadShell.title).then(
+          toastThreadActionFailure(m(msg("Failed to delete thread"))),
+        );
+      }
     },
     "thread.regenerateTitle": () => {
       if (!readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)) return false;

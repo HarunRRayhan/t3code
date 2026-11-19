@@ -2868,6 +2868,8 @@ export default function ChatView(props: ChatViewProps) {
         if (!canInterruptRunningThread) return false;
         if (!event.repeat) void onInterruptStable();
       },
+      "approval.accept": ({ event }) => answerApprovalByShortcut(event, "accept"),
+      "approval.decline": ({ event }) => answerApprovalByShortcut(event, "decline"),
     },
     fallback: (command) => {
       const scriptId = projectScriptIdFromCommand(command);
