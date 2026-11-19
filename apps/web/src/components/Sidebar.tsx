@@ -1147,14 +1147,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     routeThreadRef === null
       ? null
       : scopedThreadKey(resolveListedAncestorThreadRef(routeThreadRef, threads));
-  const routeShell =
-    routeThreadKey === null
-      ? undefined
-      : threads.find((thread) => threadShellKey(thread) === routeThreadKey);
-  const activeThreadStatus =
-    routeThreadKey !== null && routeShell
-      ? { key: routeThreadKey, group: resolveSidebarStatusGroup(routeShell) }
-      : null;
   const isSearchingThreads = threadSearchQuery.trim().length > 0;
   // The open draft's first send names its thread in place; a finalized draft reached by
   // navigation resolves through its redirect instead, and still reveals.
@@ -3743,11 +3735,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           ) : null}
         </SidebarGroup>
       </SidebarContent>
-      <SidebarChromeFooter
-        statusFilter={
-          <SidebarStatusFilterIcons counts={statusCounts} activeThread={activeThreadStatus} />
-        }
-      />
+      <SidebarChromeFooter statusFilter={<SidebarStatusFilterIcons counts={statusCounts} />} />
     </SidebarFolderDrop>
   );
 }
