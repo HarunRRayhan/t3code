@@ -173,7 +173,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
   useEffect(() => {
     if (!activeQuestion || responseDisabled || isCollapsed || backgroundThread) return;
     const handler = (event: globalThis.KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.isComposing) return;
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.isComposing) return;
       // Option+digit picks even over typed text; event.code because macOS Option remaps event.key.
       const altDigit = event.altKey && !event.shiftKey && /^Digit[1-9]$/.test(event.code);
       if (event.altKey && !altDigit) return;
