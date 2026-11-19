@@ -34,7 +34,7 @@ export function SidebarStatusFilterIcons(props: {
       <div
         role="group"
         aria-label="Filter threads by status"
-        className="ml-1 flex items-center gap-2"
+        className="ml-1 flex items-center gap-4"
       >
         {FILTERS.map((entry) => {
           const count = props.counts[entry.value];
