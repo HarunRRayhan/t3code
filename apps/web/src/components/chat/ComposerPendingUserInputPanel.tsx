@@ -212,8 +212,16 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       selectOptionFromShortcut(activeQuestion.id, option.value ?? option.label);
     };
     // Capture runs before the composer editor, which would otherwise take Enter as submit.
-    document.addEventListener("keydown", handler, true);
-    return () => document.removeEventListener("keydown", handler, true);
+    // Bubble phase lets a focused control that took the key veto it; only Option+digit needs to beat the editor.
+    const handleOptionDigit = (event: globalThis.KeyboardEvent) => {
+      if (event.altKey && /^Digit[1-9]$/.test(event.code)) handler(event);
+    };
+    document.addEventListener("keydown", handler);
+    document.addEventListener("keydown", handleOptionDigit, true);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.removeEventListener("keydown", handleOptionDigit, true);
+    };
   }, [activeQuestion, backgroundThread, isCollapsed, responseDisabled]);
 
   if (!activeQuestion) {
