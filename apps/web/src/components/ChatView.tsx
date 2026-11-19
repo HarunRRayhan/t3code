@@ -2807,6 +2807,7 @@ export default function ChatView(props: ChatViewProps) {
     draftThreadRoute: routeKind === "draft",
     turnRunning: phase === "running" || phase === "connecting",
     composerRequiresModifier: composerRequiresModifier(settings.sendShortcut, promptRef.current),
+    approvalPending: answerableApproval !== null || childApprovalAnswerable(),
     isWeb: !isElectron,
     isDesktop: isElectron,
   });
