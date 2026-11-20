@@ -369,6 +369,8 @@ function SidebarControl({ showSidebar }: { readonly showSidebar: boolean }) {
       });
       const filter = SIDEBAR_FILTER_COMMANDS[command ?? ""];
       if (command !== "sidebar.toggle" && filter === undefined) return;
+      // A focused terminal owns Ctrl chords, such as tmux's Ctrl+B prefix; Cmd never reaches it.
+      if (command === "sidebar.toggle" && event.ctrlKey && isTerminalFocused()) return;
 
       event.preventDefault();
       event.stopPropagation();
