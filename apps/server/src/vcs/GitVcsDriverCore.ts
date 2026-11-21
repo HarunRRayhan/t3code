@@ -1971,6 +1971,10 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
       statusRemoteRefreshCache,
       new StatusRemoteRefreshCacheKey({ gitCommonDir, remoteName }),
     ).pipe(Effect.ignore);
+    if (!(yield* GitVcsDriver.AwaitStatusFetch)) return;
+    // The cache returns after five seconds while the fetch keeps running.
+    const pending = statusFetches.get(`${gitCommonDir}\0${remoteName}`);
+    if (pending) yield* Fiber.await(pending.fiber);
   });
 
   const resolveDefaultBranchName = (
@@ -4327,6 +4331,18 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     const patchLimit = input.file
       ? REVIEW_DIFF_FILE_MAX_OUTPUT_BYTES
       : REVIEW_DIFF_PATCH_MAX_OUTPUT_BYTES;
+    if (
+      input.sourceKind !== undefined &&
+      input.file &&
+      input.file.sourceKind !== input.sourceKind
+    ) {
+      return yield* new GitCommandError({
+        operation: "GitVcsDriver.getReviewDiffPreview",
+        command: "git diff",
+        cwd: input.cwd,
+        detail: "Review source selectors must agree.",
+      });
+    }
     const sourceKind = input.file?.sourceKind ?? input.sourceKind;
     const needsCurrentBranch =
       input.commitSha === undefined &&
