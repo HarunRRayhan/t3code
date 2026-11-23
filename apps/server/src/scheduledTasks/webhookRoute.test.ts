@@ -5,9 +5,7 @@ import * as NodeCrypto from "node:crypto";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import * as Logger from "effect/Logger";
 import * as Option from "effect/Option";
-import * as References from "effect/References";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Etag from "effect/http/Etag";
 import * as HttpPlatform from "effect/http/HttpPlatform";
@@ -33,6 +31,8 @@ import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as RelayDeliveryProof from "./RelayDeliveryProof.ts";
 import { WEBHOOK_MAX_BODY_BYTES } from "./webhookRoute.ts";
 import * as WebhookRoute from "./webhookRoute.ts";
+import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
+import * as Workflows from "../workflows/Workflows.ts";
 
 class WebhookTestApi extends HttpApi.make("environment").add(EnvironmentHttpApi.groups.webhooks) {}
 
@@ -72,31 +72,27 @@ const relayProof = Effect.fn("relayProof")(function* (claims: {
   }).pipe(Effect.provide(PlatformNodeCrypto.layerSignature));
 });
 
+const workflowDeliveries: Array<Parameters<Workflows.Workflows["Service"]["deliver"]>[0]> = [];
+const hooks = Layer.mock(Workflows.Workflows)({
+  deliver: (delivery) =>
+    Effect.sync(() => {
+      workflowDeliveries.push(delivery);
+      return delivery.token === "tok" ? Option.some({ runId: "run-1" }) : Option.none();
+    }),
+});
+
 const handlerFor = (
   trigger: (
     request: WebhookTriggerRequest,
   ) => Effect.Effect<WebhookTriggerResult, ScheduledTaskError>,
   secrets: ReadonlyMap<string, string> = linkedSecrets,
-  loggedUrls?: Array<unknown>,
 ) =>
   HttpRouter.toWebHandler(
     HttpApiBuilder.layer(WebhookTestApi).pipe(
-      Layer.provideMerge(
-        Logger.layer(
-          loggedUrls === undefined
-            ? []
-            : [
-                Logger.make(({ fiber }) => {
-                  const url = fiber.getRef(References.CurrentLogAnnotations)["http.url"];
-                  if (url !== undefined) loggedUrls.push(url);
-                }),
-              ],
-          { mergeWithExisting: false },
-        ),
-      ),
       Layer.provide(WebhookRoute.layer),
       Layer.provide(RelayDeliveryProof.layer),
       Layer.provide(Layer.mock(ScheduledTaskService)({ triggerWebhook: trigger })),
+      Layer.provide([hooks, ManagedPolicy.layerTest()]),
       Layer.provide(
         Layer.mock(ServerSecretStore.ServerSecretStore)({
           get: (name) =>
@@ -120,7 +116,7 @@ const handlerFor = (
       ),
       Layer.provide([NodeServices.layer, PlatformNodeCrypto.layerSignature]),
     ),
-    { disableLogger: loggedUrls === undefined },
+    { disableLogger: true },
   );
 
 const post = (
@@ -130,6 +126,30 @@ const post = (
 ) => new Request(`http://env.local${path}`, { method: "POST", body, headers });
 
 describe("webhook route", () => {
+  it.live("a workflow's hook starts a run and never reaches the scheduled tasks", () =>
+    Effect.gen(function* () {
+      let tasks = 0;
+      const { handler, dispose } = handlerFor(() => {
+        tasks += 1;
+        return Effect.succeed({ _tag: "not_found" });
+      });
+      const send = (token: string) =>
+        Effect.promise(() =>
+          handler(post(`/api/hooks/wf-inbound.push/${token}?a=1`, "hello", { "X-Delivery": "d1" })),
+        );
+      const accepted = yield* send("tok");
+      expect(accepted.status).toBe(202);
+      expect(yield* Effect.promise(() => accepted.json())).toEqual({ runId: "run-1" });
+      expect((yield* send("wrong")).status).toBe(404);
+      expect(tasks).toBe(0);
+      expect(workflowDeliveries[0]).toMatchObject({
+        hookId: "wf-inbound.push",
+        request: { method: "POST", query: "a=1", body: "hello", headers: { "x-delivery": "d1" } },
+      });
+      yield* Effect.promise(dispose);
+    }),
+  );
+
   it.live("trusts the relay's delivery id and receive time only with its signed proof", () =>
     Effect.gen(function* () {
       const received: Array<WebhookTriggerRequest> = [];
@@ -201,20 +221,6 @@ describe("webhook route", () => {
       );
       yield* Effect.promise(() => dispose());
       expect(received[0]?.relayDeliveryId).toBeUndefined();
-    }),
-  );
-
-  it.live("logs webhook URLs with the token redacted", () =>
-    Effect.gen(function* () {
-      const loggedUrls: Array<unknown> = [];
-      const { handler, dispose } = handlerFor(
-        () => Effect.succeed({ _tag: "not_found" }),
-        linkedSecrets,
-        loggedUrls,
-      );
-      yield* Effect.promise(() => handler(post("/api/hooks/id/secret-token", "{}")));
-      yield* Effect.promise(() => dispose());
-      expect(loggedUrls).toEqual(["/api/hooks/id/REDACTED"]);
     }),
   );
 

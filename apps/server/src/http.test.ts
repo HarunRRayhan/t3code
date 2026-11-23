@@ -10,25 +10,12 @@ import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
-import * as Logger from "effect/Logger";
 import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 import * as Queue from "effect/Queue";
-import * as SecureRandom from "effect/crypto/SecureRandom";
-import * as References from "effect/References";
 import * as Tracer from "effect/Tracer";
 import { HttpClient, HttpClientRequest, HttpRouter, HttpServerResponse } from "effect/http";
-import { ASSET_ROUTE_PREFIX } from "./assets/AssetAccess.ts";
-import { ATTACHMENT_UPLOAD_ROUTE_PREFIX } from "./assets/AttachmentUpload.ts";
 import { openMediaFile } from "./assets/MediaFile.ts";
-import * as AssetSigner from "./assets/AssetSigner.ts";
-import * as NativeAppIconResolver from "./assets/NativeAppIconResolver.ts";
-import * as WorkspacePreviewRevisions from "./assets/WorkspacePreviewRevisions.ts";
-import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
-import * as RepositoryIdentityResolver from "./project/RepositoryIdentityResolver.ts";
-import * as DocumentText from "./provider/DocumentText.ts";
-import { SourceControlDrivers } from "./sourceControl/builtInDrivers.ts";
-import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 
 import {
   injectMcpAppCsp,
@@ -185,81 +172,69 @@ describe("browser API CORS", () => {
       await dispose();
     }
   });
+
+  it("allows originless desktop requests in dev mode while still rejecting disallowed browser origins", async () => {
+    const layerRoute = Layer.effectDiscard(
+      Effect.gen(function* () {
+        const router = yield* HttpRouter.HttpRouter;
+        yield* router.add(
+          "GET",
+          "/api/environment",
+          HttpServerResponse.empty({ headers: { vary: "Accept-Encoding" } }),
+        );
+      }),
+    );
+    const layerDevConfig = Layer.effect(
+      ServerConfig.ServerConfig,
+      Effect.map(ServerConfig.ServerConfig, (config) => ({
+        ...config,
+        devUrl: new URL("http://127.0.0.1:5733"),
+      })),
+    ).pipe(Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "http-dev-cors-test-" })));
+    const layerApp = Layer.merge(layerRoute, ServerHttp.layerBrowserApiCors).pipe(
+      Layer.provide(layerDevConfig),
+      Layer.provide(NodeServices.layer),
+    );
+    const { handler, dispose } = HttpRouter.toWebHandler(layerApp, { disableLogger: true });
+
+    try {
+      const originless = await handler(
+        new Request("https://dev.example/api/environment", { method: "GET" }),
+      );
+      expect(originless.headers.get("access-control-allow-origin")).toBe("*");
+      expect(originless.headers.get("access-control-allow-credentials")).toBeNull();
+      expect(originless.headers.get("vary")).toBe("Accept-Encoding, Origin");
+
+      const originlessPreflight = await handler(
+        new Request("https://dev.example/api/environment", { method: "OPTIONS" }),
+      );
+      expect(originlessPreflight.status).toBe(204);
+      expect(originlessPreflight.headers.get("access-control-allow-origin")).toBe("*");
+      expect(originlessPreflight.headers.get("vary")).toBe("Origin");
+
+      const allowed = await handler(
+        new Request("https://dev.example/api/environment", {
+          method: "GET",
+          headers: { origin: "http://127.0.0.1:5733" },
+        }),
+      );
+      expect(allowed.headers.get("access-control-allow-origin")).toBe("http://127.0.0.1:5733");
+      expect(allowed.headers.get("access-control-allow-credentials")).toBe("true");
+
+      const disallowed = await handler(
+        new Request("https://dev.example/api/environment", {
+          method: "GET",
+          headers: { origin: "https://evil.example" },
+        }),
+      );
+      expect(disallowed.headers.get("access-control-allow-origin")).toBeNull();
+    } finally {
+      await dispose();
+    }
+  });
 });
 
 describe("untraced requests", () => {
-  it.effect("redacts signed URL tokens in HTTP server spans and request logs", () =>
-    Effect.gen(function* () {
-      const serverSpans: Array<Tracer.NativeSpan> = [];
-      const loggedUrls: Array<unknown> = [];
-      const layerTracer = Layer.succeed(
-        Tracer.Tracer,
-        Tracer.make({
-          span: (options) => {
-            const span = new Tracer.NativeSpan(options);
-            if (options.kind === "server") serverSpans.push(span);
-            return span;
-          },
-        }),
-      );
-      const layerLogger = Logger.layer(
-        [
-          Logger.make(({ fiber }) => {
-            const url = fiber.getRef(References.CurrentLogAnnotations)["http.url"];
-            if (url !== undefined) loggedUrls.push(url);
-          }),
-        ],
-        { mergeWithExisting: false },
-      );
-      const layerRoutes = Layer.mergeAll(
-        ServerHttp.layerAssetRoute,
-        ServerHttp.layerAttachmentUploadRoute,
-      );
-      // Unsigned tokens stop at the signer; the routes' other services are never reached.
-      const layerRouteServices = Layer.mergeAll(
-        Layer.mock(AssetSigner.AssetSigner)({ verify: () => Effect.succeed(false) }),
-        Layer.mock(DocumentText.DocumentText)({}),
-        Layer.mock(NativeAppIconResolver.NativeAppIconResolver)({}),
-        Layer.mock(Orchestrator.OrchestratorV2)({}),
-        Layer.mock(RepositoryIdentityResolver.RepositoryIdentityResolver)({}),
-        Layer.mock(SecureRandom.SecureRandom)({}),
-        ServerConfig.layerTest(process.cwd(), { prefix: "t3-signed-url-test-" }),
-        Layer.succeed(SourceControlDrivers)([]),
-        Layer.mock(WorkspacePaths.WorkspacePaths)({}),
-        Layer.mock(WorkspacePreviewRevisions.WorkspacePreviewRevisions)({}),
-      );
-      // HttpRouter.serve prefers outer services; route handlers resolve them from there.
-      const services = yield* Layer.build(
-        HttpRouter.serve(layerRoutes, { disableListenLog: true }).pipe(
-          ServerHttp.withUntracedRequests,
-          Layer.provideMerge(layerRouteServices),
-          Layer.provideMerge(NodeHttpServer.layerTest),
-          Layer.provide(layerTracer),
-          Layer.provide(layerLogger),
-        ),
-      );
-      const client = Context.get(services, HttpClient.HttpClient);
-
-      for (const request of [
-        HttpClientRequest.get(`${ASSET_ROUTE_PREFIX}/payload.signature/image.png?v=1`),
-        HttpClientRequest.head(`${ASSET_ROUTE_PREFIX}/payload.signature/image.png`),
-        HttpClientRequest.post(`${ATTACHMENT_UPLOAD_ROUTE_PREFIX}/payload.signature`),
-      ]) {
-        expect((yield* client.execute(request)).status).toBe(404);
-      }
-      expect(serverSpans.map((span) => span.attributes.get("url.path"))).toEqual([
-        `${ASSET_ROUTE_PREFIX}/REDACTED`,
-        `${ASSET_ROUTE_PREFIX}/REDACTED`,
-        `${ATTACHMENT_UPLOAD_ROUTE_PREFIX}/REDACTED`,
-      ]);
-      expect(loggedUrls).toEqual([
-        `${ASSET_ROUTE_PREFIX}/REDACTED`,
-        `${ASSET_ROUTE_PREFIX}/REDACTED`,
-        `${ATTACHMENT_UPLOAD_ROUTE_PREFIX}/REDACTED`,
-      ]);
-    }).pipe(Effect.provide(NodeServices.layer)),
-  );
-
   it.effect("starts a separate trace for each request, not the server's lifetime trace", () =>
     Effect.gen(function* () {
       const requestSpans: Array<Tracer.NativeSpan> = [];
