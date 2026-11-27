@@ -11,6 +11,7 @@ import { CheckboxMark } from "../ui/checkbox";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { Kbd } from "../ui/kbd";
 import { cn } from "~/lib/utils";
+import { isEditableFocused } from "~/lib/editableFocus";
 import { isInSideChatPane } from "~/lib/sideChatPane";
 import { ComposerBanner } from "./ComposerBanner";
 import ChatMarkdown from "../ChatMarkdown";
@@ -179,18 +180,16 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       if (event.altKey && !altDigit) return;
       const target = event.target;
       if (isInSideChatPane(target)) return;
-      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-        return;
-      }
       // An empty composer takes shortcut keys as option picks; once the user types, they are text.
       const composer =
         target instanceof HTMLElement ? target.closest('[data-testid="composer-editor"]') : null;
+      if (!composer && isEditableFocused(target)) return;
       if (composer && !altDigit && composer.textContent?.trim()) return;
       if (
         !composer &&
         target instanceof HTMLElement &&
         target.closest(
-          'select, [contenteditable]:not([contenteditable="false"]), [role="dialog"], [aria-modal="true"], [role="menu"], [role="combobox"], [data-slot$="popup"]',
+          '[role="dialog"], [aria-modal="true"], [role="menu"], [role="combobox"], [data-slot$="popup"]',
         )
       ) {
         return;
@@ -259,7 +258,10 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
       >
         <ComposerBanner.Content>
           <span
-            className={cn("min-w-0 truncate text-muted-foreground", isCollapsed && "max-w-1/2")}
+            className={cn(
+              "min-w-0 text-muted-foreground",
+              isCollapsed ? "max-w-1/2 truncate" : "wrap-anywhere",
+            )}
             dir={textDirection(activeQuestion.header)}
           >
             {activeQuestion.header}
